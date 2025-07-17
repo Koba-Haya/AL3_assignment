@@ -14,9 +14,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	DirectXCommon* dxCommon = DirectXCommon::GetInstance();
 
 	// ゲームシーンのインスタンス生成
-	GameScene* gamescene = new GameScene();
+	GameScene* gameScene = new GameScene();
 	// ゲームシーンの初期化
-	gamescene->Initialize();
+	gameScene->Initialize();
 
 	// メインループ
 	while (true) {
@@ -25,22 +25,24 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			break;
 		}
 		// ゲームシーンの更新
-		gamescene->Update();
+		gameScene->Update();
 
 		// 描画開始
 		dxCommon->PreDraw();
 
-		//=================================
-		//          ここに描画処理
-		//=================================
+		KamataEngine::Model::PreDraw(dxCommon->GetCommandList());
+
+		gameScene->Draw();
+
+		KamataEngine::Model::PostDraw();
 
 		// 描画終了
 		dxCommon->PostDraw();
 	}
 	// ゲームシーンの開放
-	delete gamescene;
+	delete gameScene;
 	// nullptrの代入
-	gamescene = nullptr;
+	gameScene = nullptr;
 
 	// エンジンの終了処理
 	KamataEngine::Finalize();
