@@ -6,4 +6,4 @@ using namespace KamataEngine;
 
 void WorldTransformUpdate(KamataEngine::WorldTransform& worldTransform);
 
-class WorldTransform {};
+class TransformWorld {};

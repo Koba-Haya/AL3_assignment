@@ -1,6 +1,7 @@
 #pragma once
 #include <KamataEngine.h>
 #include "Method.h"
+#include "TransformWorld.h"
 
 class Player {
 public:

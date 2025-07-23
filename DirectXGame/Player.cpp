@@ -13,14 +13,9 @@ void Player::Initialize(KamataEngine::Model* model, uint32_t textureHandle, Kama
 	worldTransform_.Initialize();
 }
 
-void Player::Update() {
-	// スケール、回転、平行移動を合成して行列を計算する
-	worldTransform_.matWorld_ = MakeAffineMatrix(worldTransform_.scale_, worldTransform_.rotation_, worldTransform_.translation_);
-	// 行列を定数バッファに転送
-	worldTransform_.TransferMatrix();
-}
+void Player::Update() { WorldTransformUpdate(worldTransform_); }
 
-void Player::Draw() { 
+void Player::Draw() {
 	// 3Dモデルを描画
-	model_->Draw(worldTransform_, *camera_, textureHandle_); 
+	model_->Draw(worldTransform_, *camera_, textureHandle_);
 }
