@@ -1,5 +1,6 @@
 #pragma once
 #include <KamataEngine.h>
+#include "Method.h"
 
 class Player {
 public:

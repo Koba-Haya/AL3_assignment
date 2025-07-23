@@ -6,11 +6,15 @@ GameScene::~GameScene() {
 	// 3Dモデルデータの開放
 	delete model_;
 	// ブロックモデルデータの開放
-	delete modelblock_;
+	delete modelBlock_;
+	// 天球モデルデータの開放
+	delete modelSydome_;
 	// デバッグカメラの開放
 	delete debugCamera_;
 	// 自キャラの開放
 	delete player_;
+	// 天球の開放
+	delete skydome_;
 
 	for (std::vector<WorldTransform*>& worldTransformBlockLine : worldTransformBlocks_) {
 		for (WorldTransform* worldTransformBlock : worldTransformBlockLine) {
@@ -21,15 +25,16 @@ GameScene::~GameScene() {
 }
 
 void GameScene::Initialize() {
-	// ファイル名を指定してテクスチャを読み込む
-	textureHandle_ = TextureManager::Load("uvChecker.png");
 
 	// 3Dモデルデータの生成
 	model_ = Model::Create();
-
 	// ブロックモデルデータの生成
-	modelblock_ = Model::Create();
+	modelBlock_ = Model::Create();
+	// 天球モデルデータの生成
+	modelSydome_ = Model::CreateFromOBJ("sky_sphere", true);
 
+	// カメラのfarZを適度に大きい値に
+	camera_.farZ = 1000.0f;
 	// カメラの初期化
 	camera_.Initialize();
 
@@ -38,8 +43,15 @@ void GameScene::Initialize() {
 
 	// 自キャラの生成
 	player_ = new Player();
+	// ファイル名を指定してテクスチャを読み込む
+	textureHandle_ = TextureManager::Load("monsterBall.png");
 	// 自キャラの初期化
 	player_->Initialize(model_, textureHandle_, &camera_);
+
+	// 天球の生成
+	skydome_ = new Skydome();
+	// 天球の初期化
+	skydome_->Initialize();
 
 	// 要素数
 	const uint32_t kNumBlockVirtical = 10;
@@ -71,6 +83,8 @@ void GameScene::Initialize() {
 void GameScene::Update() {
 	// 自キャラの更新
 	player_->Update();
+	// 天球の更新
+	skydome_->Update();
 #ifdef _DEBUG
 	if (Input::GetInstance()->TriggerKey(DIK_1)) { // 例：キー1で切り替え
 		isDebugCameraActive_ = !isDebugCameraActive_;
@@ -106,12 +120,15 @@ void GameScene::Update() {
 void GameScene::Draw() {
 	// 自キャラの描画
 	player_->Draw();
+	// 天球の描画
+	skydome_->Draw(&camera_);
+
 	// ブロックの描画
 	for (std::vector<WorldTransform*>& worldTransformBlockLine : worldTransformBlocks_) {
 		for (WorldTransform* worldTransformBlock : worldTransformBlockLine) {
 			if (!worldTransformBlock)
 				continue;
-			modelblock_->Draw(*worldTransformBlock, camera_);
+			modelBlock_->Draw(*worldTransformBlock, camera_);
 		}
 	}
 }

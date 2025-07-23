@@ -2,6 +2,7 @@
 #include "KamataEngine.h"
 #include "Method.h"
 #include "Player.h"
+#include "Skydome.h"
 #include <vector>
 
 using namespace KamataEngine;
@@ -23,12 +24,14 @@ public:
 private:
 	// テクスチャハンドル
 	UINT32 textureHandle_ = 0;
-	// 3DPlayerモデルデータ
-	KamataEngine::Model* model_ = nullptr;
 	// カメラ
 	KamataEngine::Camera camera_;
+	// 3DPlayerモデルデータ
+	KamataEngine::Model* model_ = nullptr;
 	// ブロックモデルデータ
-	KamataEngine::Model* modelblock_ = nullptr;
+	KamataEngine::Model* modelBlock_ = nullptr;
+	// 天球モデルデータ
+	KamataEngine::Model* modelSydome_ = nullptr;
 
 	bool isDebugCameraActive_ = false;
 	// デバッグカメラ
@@ -36,6 +39,9 @@ private:
 
 	// 自キャラ
 	Player* player_ = nullptr;
+
+	// 天球
+	Skydome* skydome_ = nullptr;
 
 	std::vector<std::vector<KamataEngine::WorldTransform*>> worldTransformBlocks_;
 };
