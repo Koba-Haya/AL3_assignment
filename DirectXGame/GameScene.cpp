@@ -62,6 +62,12 @@ void GameScene::Initialize() {
 	mapChipField_->LoadMapChipCsv("Resources/block.csv");
 
 	GenetateBlocks();
+
+	// カメラコントローラーの初期化
+	cameraController_ = new CameraController; // 生成
+	cameraController_->Initialize();          // 初期化
+	cameraController_->SetTarget(player_);    // 追従対象をセット
+	cameraController_->Reset();               // リセット（瞬間合わせ）
 }
 
 void GameScene::Update() {
@@ -69,6 +75,7 @@ void GameScene::Update() {
 	player_->Update();
 	// 天球の更新
 	skydome_->Update();
+
 #ifdef _DEBUG
 	if (Input::GetInstance()->TriggerKey(DIK_1)) { // 例：キー1で切り替え
 		isDebugCameraActive_ = !isDebugCameraActive_;
@@ -83,7 +90,16 @@ void GameScene::Update() {
 
 		camera_.TransferMatrix();
 	} else {
-		camera_.UpdateMatrix();
+		// カメラコントローラーの更新
+		cameraController_->Update();
+
+		// カメラを controller から取得して camera_ に反映
+		const Camera& controlledCam = cameraController_->GetCamera();
+		camera_.matView = controlledCam.matView;
+		camera_.matProjection = controlledCam.matProjection;
+
+		// ここで行列転送も必要（たとえば TransferMatrix などが必要なら）
+		camera_.TransferMatrix();
 	}
 
 	// ブロックの更新

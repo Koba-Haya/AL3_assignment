@@ -4,6 +4,7 @@
 #include "Player.h"
 #include "Skydome.h"
 #include "MapChipField.h"
+#include "CameraController.h"
 #include <vector>
 
 using namespace KamataEngine;
@@ -46,6 +47,9 @@ private:
 
 	// マップチップフィールド
 	MapChipField* mapChipField_;
+
+	// カメラコントローラー
+	CameraController* cameraController_ = nullptr;
 
 	std::vector<std::vector<KamataEngine::WorldTransform*>> worldTransformBlocks_;
 };

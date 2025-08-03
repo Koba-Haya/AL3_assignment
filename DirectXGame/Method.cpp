@@ -235,6 +235,14 @@ Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio, float nearClip
 	return result;
 }
 
+Vector3 Lerp(const Vector3& v1, const Vector3& v2, float t) {
+	Vector3 point1;
+	Vector3 point2;
+	point1 = {t * v1.x, t * v1.y, t * v1.z};
+	point2 = {(1.0f - t) * v2.x, (1.0f - t) * v2.y, (1.0f - t) * v2.z};
+	return {point1.x + point2.x, point1.y + point2.y, point1.z + point2.z};
+}
+
 float EaseInOut(float t) {
 	// 0.0〜1.0の範囲に制限
 	if (t < 0.0f) {

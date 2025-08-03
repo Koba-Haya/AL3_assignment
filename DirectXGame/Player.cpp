@@ -139,3 +139,7 @@ void Player::Draw() {
 	// 3Dモデルを描画
 	model_->Draw(worldTransform_, *camera_);
 }
+
+const KamataEngine::WorldTransform& Player::GetWorldTransform() const {
+	return worldTransform_;
+}
