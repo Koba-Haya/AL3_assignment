@@ -25,8 +25,6 @@ public:
 	void GenetateBlocks();
 
 private:
-	// テクスチャハンドル
-	UINT32 textureHandle_ = 0;
 	// カメラ
 	KamataEngine::Camera camera_;
 	// 3DPlayerモデルデータ
@@ -34,7 +32,7 @@ private:
 	// ブロックモデルデータ
 	KamataEngine::Model* modelBlock_ = nullptr;
 	// 天球モデルデータ
-	KamataEngine::Model* modelSydome_ = nullptr;
+	KamataEngine::Model* modelSkydome_ = nullptr;
 
 	bool isDebugCameraActive_ = false;
 	// デバッグカメラ

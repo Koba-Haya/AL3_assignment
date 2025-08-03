@@ -234,3 +234,22 @@ Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio, float nearClip
 	          (-nearClip * farClip) / (farClip - nearClip),           0};
 	return result;
 }
+
+float EaseInOut(float t) {
+	// 0.0〜1.0の範囲に制限
+	if (t < 0.0f) {
+		t = 0.0f;
+	} else if (t > 1.0f) {
+		t = 1.0f;
+	}
+
+	float result = 0.0f;
+	if (t < 0.5f) {
+		result = 4.0f * t * t * t;
+	} else {
+		float temp = -2.0f * t + 2.0f;
+		result = 1.0f - (temp * temp * temp) / 2.0f;
+	}
+
+	return result;
+}
