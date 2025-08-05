@@ -5,6 +5,7 @@
 #include "Skydome.h"
 #include "MapChipField.h"
 #include "CameraController.h"
+#include "Enemy.h"
 #include <vector>
 
 using namespace KamataEngine;
@@ -29,7 +30,9 @@ private:
 	// カメラ
 	KamataEngine::Camera camera_;
 	// 3DPlayerモデルデータ
-	KamataEngine::Model* model_ = nullptr;
+	KamataEngine::Model* playerModel_ = nullptr;
+	// 3DEnemyモデルデータ
+	KamataEngine::Model* enemyModel_ = nullptr;
 	// ブロックモデルデータ
 	KamataEngine::Model* modelBlock_ = nullptr;
 	// 天球モデルデータ
@@ -44,6 +47,9 @@ private:
 
 	// 天球
 	Skydome* skydome_ = nullptr;
+
+	// 敵キャラ
+	Enemy* enemy_ = nullptr;
 
 	// マップチップフィールド
 	MapChipField* mapChipField_;

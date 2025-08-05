@@ -4,7 +4,9 @@ using namespace KamataEngine;
 
 GameScene::~GameScene() {
 	// 3Dモデルデータの開放
-	delete model_;
+	delete playerModel_;
+	// 3Dモデルデータの開放
+	delete enemyModel_;
 	// ブロックモデルデータの開放
 	delete modelBlock_;
 	// 天球モデルデータの開放
@@ -15,6 +17,8 @@ GameScene::~GameScene() {
 	delete player_;
 	// 天球の開放
 	delete skydome_;
+	// 敵キャラの開放
+	delete enemy_;
 	// マップチップフィールドの開放
 	delete mapChipField_;
 
@@ -29,7 +33,9 @@ GameScene::~GameScene() {
 void GameScene::Initialize() {
 
 	// 3Dモデルデータの生成
-	model_ = Model::CreateFromOBJ("player", true);
+	playerModel_ = Model::CreateFromOBJ("player", true);
+	// 3Dモデルデータの生成
+	enemyModel_ = Model::CreateFromOBJ("enemy", true);
 	// ブロックモデルデータの生成
 	modelBlock_ = Model::CreateFromOBJ("cube", true);
 	// 天球モデルデータの生成
@@ -54,9 +60,17 @@ void GameScene::Initialize() {
 	// 座標をマップチップ番号で指定
 	Vector3 playerPosition = mapChipField_->GetMapChipPositionByIndex(1, 18);
 	// 自キャラの初期化
-	player_->Initialize(model_, &camera_, playerPosition);
+	player_->Initialize(playerModel_, &camera_, playerPosition);
 	// マップチップデータのセット
 	player_->SetMapChipField(mapChipField_);
+
+	// 敵キャラの生成
+	enemy_ = new Enemy;
+	// 座標をマップチップ番号で指定
+	Vector3 enemyPosition = mapChipField_->GetMapChipPositionByIndex(7, 18);
+	// 自キャラの初期化
+	enemy_->Initialize(enemyModel_, &camera_, enemyPosition);
+
 
 	// 天球の生成
 	skydome_ = new Skydome;
@@ -77,6 +91,8 @@ void GameScene::Update() {
 	player_->Update();
 	// 天球の更新
 	skydome_->Update();
+	// 敵キャラの更新
+	enemy_->Update();
 
 #ifdef _DEBUG
 	if (Input::GetInstance()->TriggerKey(DIK_1)) { // 例：キー1で切り替え
@@ -124,6 +140,8 @@ void GameScene::Draw() {
 	player_->Draw();
 	// 天球の描画
 	skydome_->Draw(&camera_);
+	// 敵キャラの描画
+	enemy_->Draw();
 
 	// ブロックの描画
 	for (std::vector<WorldTransform*>& worldTransformBlockLine : worldTransformBlocks_) {
