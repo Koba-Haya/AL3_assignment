@@ -336,4 +336,7 @@ AABB Player::GetAABB() {
 
 void Player::OnCollision(const Enemy* enemy) {
 	(void)enemy;
+	isDead_ = true;
+
+	velocity_.y = kJumpAcceleration;
 }

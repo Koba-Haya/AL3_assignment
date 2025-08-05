@@ -75,6 +75,9 @@ public:
 	// 衝突反応
 	void OnCollision(const Enemy* enemy);
 
+	// デスフラグのgetter
+	bool IsDead() const { return isDead_; };
+
 private:
 	// ワールド変換データ
 	KamataEngine::WorldTransform worldTransform_;
@@ -97,6 +100,9 @@ private:
 
 	// マップチップによるフィールド
 	MapChipField* mapChipField_ = nullptr;
+
+	// デスフラグ
+	bool isDead_ = false;
 
 	// 重力加速度（下方向）
 	static inline const float kGravityAcceleration = 0.1f;

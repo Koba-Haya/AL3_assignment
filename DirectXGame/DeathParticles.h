@@ -12,6 +12,9 @@ public:
 	void Update();
 	void Draw();
 
+	// デスフラグのgetter
+	bool IsFinished() const { return isFinished_; };
+
 private:
 	// モデル
 	KamataEngine::Model* model_ = nullptr;

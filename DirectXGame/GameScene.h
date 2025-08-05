@@ -1,15 +1,20 @@
 #pragma once
 #include "CameraController.h"
+#include "DeathParticles.h"
 #include "Enemy.h"
 #include "KamataEngine.h"
 #include "MapChipField.h"
 #include "Method.h"
 #include "Player.h"
 #include "Skydome.h"
-#include "DeathParticles.h"
 #include <vector>
 
 using namespace KamataEngine;
+
+enum class Phase {
+	kPlay,  // ゲームプレイ
+	kDeath, // デス演出
+};
 
 class GameScene {
 public:
@@ -29,6 +34,11 @@ public:
 
 	// すべての当たり判定を行う
 	void CheckAllCollisions();
+
+	void ChangePhase();
+
+	// デスフラグのgetter
+	bool IsFinished() const { return finished_; };
 
 private:
 	// カメラ
@@ -64,6 +74,12 @@ private:
 	CameraController* cameraController_ = nullptr;
 
 	DeathParticles* deathParticles_ = nullptr;
+
+	// ゲームの現在のフェーズ
+	Phase phase_;
+
+	// 終了フラグ
+	bool finished_ = false;
 
 	std::vector<std::vector<KamataEngine::WorldTransform*>> worldTransformBlocks_;
 };
