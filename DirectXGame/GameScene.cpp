@@ -7,6 +7,8 @@ GameScene::~GameScene() {
 	delete playerModel_;
 	// 3Dモデルデータの開放
 	delete enemyModel_;
+	// デスパーティクルモデルの開放
+	delete particleModel_;
 	// ブロックモデルデータの開放
 	delete modelBlock_;
 	// 天球モデルデータの開放
@@ -17,8 +19,13 @@ GameScene::~GameScene() {
 	delete player_;
 	// 天球の開放
 	delete skydome_;
+	// デスパーティクルの開放
+	delete deathParticles_;
 	// 敵キャラの開放
-	delete enemy_;
+	for (Enemy* enemy : enemies_) {
+		delete enemy;
+	}
+	enemies_.clear();
 	// マップチップフィールドの開放
 	delete mapChipField_;
 
@@ -36,6 +43,15 @@ void GameScene::Initialize() {
 	playerModel_ = Model::CreateFromOBJ("player", true);
 	// 3Dモデルデータの生成
 	enemyModel_ = Model::CreateFromOBJ("enemy", true);
+	// 敵を複数生成
+	const int enemyCount = 3;
+	for (int32_t i = 0; i < enemyCount; ++i) {
+		Enemy* newEnemy = new Enemy();
+		Vector3 enemyPosition = {float(i) * 3.0f, 1.0f, 0.0f}; // 一体ずつX方向にずらす
+		newEnemy->Initialize(enemyModel_, &camera_, enemyPosition);
+		enemies_.push_back(newEnemy);
+	}
+	particleModel_ = Model::CreateFromOBJ("particle", true);
 	// ブロックモデルデータの生成
 	modelBlock_ = Model::CreateFromOBJ("cube", true);
 	// 天球モデルデータの生成
@@ -64,13 +80,9 @@ void GameScene::Initialize() {
 	// マップチップデータのセット
 	player_->SetMapChipField(mapChipField_);
 
-	// 敵キャラの生成
-	enemy_ = new Enemy;
-	// 座標をマップチップ番号で指定
-	Vector3 enemyPosition = mapChipField_->GetMapChipPositionByIndex(7, 18);
-	// 自キャラの初期化
-	enemy_->Initialize(enemyModel_, &camera_, enemyPosition);
-
+	// 仮の生成処理
+	deathParticles_ = new DeathParticles;
+	deathParticles_->Initialize(particleModel_, &camera_, playerPosition);
 
 	// 天球の生成
 	skydome_ = new Skydome;
@@ -92,7 +104,14 @@ void GameScene::Update() {
 	// 天球の更新
 	skydome_->Update();
 	// 敵キャラの更新
-	enemy_->Update();
+	for (Enemy* enemy : enemies_) {
+		enemy->Update();
+	}
+	if (deathParticles_) {
+		deathParticles_->Update();
+	}
+	// すべての当たり判定を行う
+	CheckAllCollisions();
 
 #ifdef _DEBUG
 	if (Input::GetInstance()->TriggerKey(DIK_1)) { // 例：キー1で切り替え
@@ -133,6 +152,7 @@ void GameScene::Update() {
 			worldTransformBlock->TransferMatrix();
 		}
 	}
+
 }
 
 void GameScene::Draw() {
@@ -141,8 +161,12 @@ void GameScene::Draw() {
 	// 天球の描画
 	skydome_->Draw(&camera_);
 	// 敵キャラの描画
-	enemy_->Draw();
-
+	for (Enemy* enemy : enemies_) {
+		enemy->Draw();
+	}
+	if (deathParticles_) {
+		deathParticles_->Draw();
+	}
 	// ブロックの描画
 	for (std::vector<WorldTransform*>& worldTransformBlockLine : worldTransformBlocks_) {
 		for (WorldTransform* worldTransformBlock : worldTransformBlockLine) {
@@ -178,4 +202,30 @@ void GameScene::GenetateBlocks() {
 			}
 		}
 	}
+}
+
+void GameScene::CheckAllCollisions() {
+	#pragma region 
+	{
+		// 判定対象1と2の座標
+		AABB aabb1, aabb2;
+
+		//自キャラの座標
+		aabb1 = player_->GetAABB();
+
+		// 自キャラと敵球すべての当たり判定
+		for (Enemy* enemy : enemies_) {
+		// 敵弾の座標
+			aabb2 = enemy->GetAABB();
+
+			if (IsCollision(aabb1, aabb2)) {
+				// 衝突応答処理
+				// 自キャラの衝突時関数を呼び出す
+				player_->OnCollision(enemy);
+				// 敵の衝突時関数を呼び出す
+				enemy->OnCollision(player_);
+			}
+		}
+	}
+	#pragma endregion
 }

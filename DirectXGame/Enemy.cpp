@@ -32,7 +32,7 @@ void Enemy::Update() {
 	}
 
 	// 角度補間 [degree → radian変換]
-	float param = std::sin(2.0f * std::numbers::pi_v<float> * walkTimer_ / kWalkMotionTime);
+	float param = std::sin((2.0f * std::numbers::pi_v<float>) * (walkTimer_ / kWalkMotionTime));
 	float degree = kWalkMotionAngleStart + kWalkMotionAngleEnd * (param + 1.0f) / 2.0f;
 	float angleRad = degree * (std::numbers::pi_v<float> / 180.0f);
 
@@ -47,3 +47,13 @@ void Enemy::Update() {
 }
 
 void Enemy::Draw() { model_->Draw(worldTransform_, *camera_); }
+
+AABB Enemy::GetAABB() {
+	Vector3 pos = {worldTransform_.matWorld_.m[3][0], worldTransform_.matWorld_.m[3][1], worldTransform_.matWorld_.m[3][2]}; // ワールド行列から座標取得
+	AABB aabb;
+	aabb.min = {pos.x - kWidth / 2.0f, pos.y - kHeight / 2.0f, pos.z};
+	aabb.max = {pos.x + kWidth / 2.0f, pos.y + kHeight / 2.0f, pos.z};
+	return aabb;
+}
+
+void Enemy::OnCollision(const Player* player) { (void)player; }

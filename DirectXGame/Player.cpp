@@ -33,7 +33,7 @@ void Player::Update() {
 	// マップ衝突チェック
 	MapCollisionDetection(collisionMapInfo);
 
-	ApplyCollisionMove(collisionMapInfo); // 実移動
+	ApplyCollisionMove(collisionMapInfo);     // 実移動
 	HandleCeilingCollision(collisionMapInfo); // velocity_.y = 0.0f
 	HandleGroundCollision(collisionMapInfo);
 	HandleWallCollision(collisionMapInfo);
@@ -210,8 +210,7 @@ void Player::MapCollisionDetectionDown(CollisionMapInfo& info) {
 
 	if (hit) {
 		// セル境界をまたいだかを確認
-		IndexSet indexSetNow =
-		    mapChipField_->GetMapChipIndexSetByPosition({worldTransform_.translation_.x, worldTransform_.translation_.y - kHeight / 2.0f, worldTransform_.translation_.z});
+		IndexSet indexSetNow = mapChipField_->GetMapChipIndexSetByPosition({worldTransform_.translation_.x, worldTransform_.translation_.y - kHeight / 2.0f, worldTransform_.translation_.z});
 
 		if (indexSetNow.yIndex != indexSet.yIndex) {
 			// プレイヤーの下端（移動後）
@@ -313,4 +312,28 @@ void Player::HandleWallCollision(const CollisionMapInfo& info) {
 	if (info.onWallCollision_) {
 		velocity_.x = 0.0f;
 	}
+}
+
+Vector3 Player::GetWorldPosition() {
+	Vector3 worldPos;
+
+	// ワールド行列の平行移動成分を取得（=ワールド座標）
+	worldPos.x = worldTransform_.matWorld_.m[3][0]; // Tx
+	worldPos.y = worldTransform_.matWorld_.m[3][1]; // Ty
+	worldPos.z = worldTransform_.matWorld_.m[3][2]; // Tz
+
+	return worldPos;
+}
+
+AABB Player::GetAABB() {
+	Vector3 worldPos = GetWorldPosition();
+	AABB aabb;
+	aabb.min = {worldPos.x - kWidth / 2.0f, worldPos.y - kHeight / 2.0f, worldPos.z - kWidth / 2.0f};
+	aabb.max = {worldPos.x + kWidth / 2.0f, worldPos.y + kHeight / 2.0f, worldPos.z + kWidth / 2.0f};
+
+	return aabb;
+}
+
+void Player::OnCollision(const Enemy* enemy) {
+	(void)enemy;
 }

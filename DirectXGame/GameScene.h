@@ -1,11 +1,12 @@
 #pragma once
+#include "CameraController.h"
+#include "Enemy.h"
 #include "KamataEngine.h"
+#include "MapChipField.h"
 #include "Method.h"
 #include "Player.h"
 #include "Skydome.h"
-#include "MapChipField.h"
-#include "CameraController.h"
-#include "Enemy.h"
+#include "DeathParticles.h"
 #include <vector>
 
 using namespace KamataEngine;
@@ -26,6 +27,9 @@ public:
 
 	void GenetateBlocks();
 
+	// すべての当たり判定を行う
+	void CheckAllCollisions();
+
 private:
 	// カメラ
 	KamataEngine::Camera camera_;
@@ -33,6 +37,8 @@ private:
 	KamataEngine::Model* playerModel_ = nullptr;
 	// 3DEnemyモデルデータ
 	KamataEngine::Model* enemyModel_ = nullptr;
+	// 3DEnemyモデルデータ
+	KamataEngine::Model* particleModel_ = nullptr;
 	// ブロックモデルデータ
 	KamataEngine::Model* modelBlock_ = nullptr;
 	// 天球モデルデータ
@@ -49,13 +55,15 @@ private:
 	Skydome* skydome_ = nullptr;
 
 	// 敵キャラ
-	Enemy* enemy_ = nullptr;
+	std::list<Enemy*> enemies_;
 
 	// マップチップフィールド
 	MapChipField* mapChipField_;
 
 	// カメラコントローラー
 	CameraController* cameraController_ = nullptr;
+
+	DeathParticles* deathParticles_ = nullptr;
 
 	std::vector<std::vector<KamataEngine::WorldTransform*>> worldTransformBlocks_;
 };

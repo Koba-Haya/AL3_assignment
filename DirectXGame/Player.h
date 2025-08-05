@@ -34,6 +34,8 @@ enum Corner {
 	kNumCorner    // 要素数
 };
 
+class Enemy;
+
 class Player {
 public:
 	/// <summary>
@@ -63,6 +65,15 @@ public:
 	void HandleCeilingCollision(const CollisionMapInfo& info);
 	void HandleGroundCollision(const CollisionMapInfo& info);
 	void HandleWallCollision(const CollisionMapInfo& info);
+
+	// ワールド座標
+	Vector3 GetWorldPosition();
+
+	// AABBを取得
+	AABB GetAABB();
+
+	// 衝突反応
+	void OnCollision(const Enemy* enemy);
 
 private:
 	// ワールド変換データ
