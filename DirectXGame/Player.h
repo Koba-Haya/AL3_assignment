@@ -56,11 +56,13 @@ public:
 	void MapCollisionDetection(CollisionMapInfo& info);
 	Vector3 CornerPosition(const Vector3& center, Corner corner);
 	void MapCollisionDetectionUp(CollisionMapInfo& info);
-	// void MapCollisionDetectionDown(CollisionMapInfo& info);
-	// void MapCollisionDetectionRight(CollisionMapInfo& info);
-	// void MapCollisionDetectionLeft(CollisionMapInfo& info);
+	void MapCollisionDetectionDown(CollisionMapInfo& info);
+	void MapCollisionDetectionRight(CollisionMapInfo& info);
+	void MapCollisionDetectionLeft(CollisionMapInfo& info);
 	void ApplyCollisionMove(const CollisionMapInfo& info);
 	void HandleCeilingCollision(const CollisionMapInfo& info);
+	void HandleGroundCollision(const CollisionMapInfo& info);
+	void HandleWallCollision(const CollisionMapInfo& info);
 
 private:
 	// ワールド変換データ
@@ -88,7 +90,7 @@ private:
 	// 重力加速度（下方向）
 	static inline const float kGravityAcceleration = 0.1f;
 	// 最大落下速度（下方向）
-	static inline const float kLimitFallSpeed = 0.3f;
+	static inline const float kLimitFallSpeed = 0.2f;
 	// ジャンプ初速（上方向）
 	static inline const float kJumpAcceleration = 1.0f;
 
