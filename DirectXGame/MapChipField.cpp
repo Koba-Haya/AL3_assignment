@@ -17,7 +17,7 @@ std::map<std::string, MapChipType> mapChipTable = {
 void MapChipField::ResetMapChipData() {
 	// マップチップデータをリセット
 	mapChipData_.data.clear();
-	mapChipData_.data.resize(kNumBlockVirtical_);
+	mapChipData_.data.resize(kNumBlockVertical_);
 	for (std::vector<MapChipType>& mapChipDataLine : mapChipData_.data) {
 		mapChipDataLine.resize(kNumBlockHorizontal_);
 	}
@@ -39,7 +39,7 @@ void MapChipField::LoadMapChipCsv(const std::string& filePath) {
 	// ファイルを閉じる
 	file.close();
 	// CSVからマップチップデータを読み込む
-	for (uint32_t i = 0; i < kNumBlockVirtical_; ++i) {
+	for (uint32_t i = 0; i < kNumBlockVertical_; ++i) {
 		std::string line;
 		getline(mapChipCsv, line);
 
@@ -62,13 +62,43 @@ MapChipType MapChipField::GetMapChipTypeByIndex(uint32_t xIndex, uint32_t yIndex
 		return MapChipType::kBlank;
 	}
 
-	if (yIndex < 0 || kNumBlockVirtical_ - 1 < yIndex) {
+	if (yIndex < 0 || kNumBlockVertical_ - 1 < yIndex) {
 		return MapChipType::kBlank;
 	}
 
 	return mapChipData_.data[yIndex][xIndex];
 }
 
-Vector3 MapChipField::GetMapChipPositionByIndex(uint32_t xIndex, uint32_t yIndex) {
-	return Vector3(kBlockWidth * xIndex, kBlockHeight * (kNumBlockVirtical_ - 1 - yIndex), 0);
+Vector3 MapChipField::GetMapChipPositionByIndex(uint32_t xIndex, uint32_t yIndex) { return Vector3(kBlockWidth * xIndex, kBlockHeight * (kNumBlockVertical_ - 1 - yIndex), 0); }
+
+IndexSet MapChipField::GetMapChipIndexSetByPosition(const Vector3& position) {
+	IndexSet indexSet = {};
+
+	// ブロック中心原点から左下(0,0)基準に変換（＝中心から半分ずらす）
+	float adjustedX = position.x + kBlockWidth / 2.0f;
+	float adjustedY = position.y + kBlockHeight / 2.0f;
+
+	// X番号計算（小数点以下切り捨て）
+	indexSet.xIndex = static_cast<uint32_t>(adjustedX / kBlockWidth);
+
+	// Y番号（いったんそのまま反転前で計算）
+	uint32_t reversedY = static_cast<uint32_t>(adjustedY / kBlockHeight);
+
+	// Y番号を上下反転
+	indexSet.yIndex = kNumBlockVertical_ - 1 - reversedY;
+
+	return indexSet;
+}
+
+Rect MapChipField::GetRectByIndex(uint32_t xIndex, uint32_t yIndex) {
+	// 指定ブロックの中心座標を取得する
+	Vector3 center = GetMapChipPositionByIndex(xIndex, yIndex);
+
+	Rect rect;
+	rect.left = center.x - kBlockWidth / 2.0f;
+	rect.right = center.x + kBlockWidth / 2.0f;
+	rect.bottom = center.y - kBlockHeight / 2.0f;
+	rect.top = center.y + kBlockHeight / 2.0f;
+
+	return rect;
 }

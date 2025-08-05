@@ -44,22 +44,24 @@ void GameScene::Initialize() {
 	// デバッグカメラの生成
 	debugCamera_ = new DebugCamera(1280, 720);
 
+	// マップチップフィールドの生成
+	mapChipField_ = new MapChipField;
+	// CSVファイルからマップデータを読み込み
+	mapChipField_->LoadMapChipCsv("Resources/block.csv");
+
 	// 自キャラの生成
 	player_ = new Player;
 	// 座標をマップチップ番号で指定
 	Vector3 playerPosition = mapChipField_->GetMapChipPositionByIndex(1, 18);
 	// 自キャラの初期化
 	player_->Initialize(model_, &camera_, playerPosition);
+	// マップチップデータのセット
+	player_->SetMapChipField(mapChipField_);
 
 	// 天球の生成
 	skydome_ = new Skydome;
 	// 天球の初期化
 	skydome_->Initialize();
-
-	// マップチップフィールドの生成
-	mapChipField_ = new MapChipField;
-	// CSVファイルからマップデータを読み込み
-	mapChipField_->LoadMapChipCsv("Resources/block.csv");
 
 	GenetateBlocks();
 
@@ -135,7 +137,7 @@ void GameScene::Draw() {
 
 void GameScene::GenetateBlocks() {
 	// 要素数
-	const uint32_t kNumBlockVirtical = mapChipField_->GetNumBlockVirtical();
+	const uint32_t kNumBlockVirtical = mapChipField_->GetNumBlockVertical();
 	const uint32_t kNumBlockHorizontal = mapChipField_->GetNumBlockHorizontal();
 	// ブロック一個分の縦横幅
 	// const float kBlockWidth = 1.0f;

@@ -20,7 +20,7 @@ void CameraController::Update() {
 	// 座標補間によりゆったり追従
 	camera_.translation_ = Lerp(camera_.translation_, targetCoordinates_, kInterpolationRate);
 	// 移動範囲制限
-	camera_.translation_.x = std::max(camera_.translation_.x, targetWorldTransform.translation_.x+ margin.left);
+	camera_.translation_.x = std::max(camera_.translation_.x, targetWorldTransform.translation_.x + margin.left);
 	camera_.translation_.x = std::min(camera_.translation_.x, targetWorldTransform.translation_.x + margin.right);
 	camera_.translation_.y = std::max(camera_.translation_.y, targetWorldTransform.translation_.y + margin.bottom);
 	camera_.translation_.y = std::min(camera_.translation_.y, targetWorldTransform.translation_.y + margin.top);
