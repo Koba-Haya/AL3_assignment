@@ -9,7 +9,7 @@
 #include "DeathParticles.h"
 #include <vector>
 
-using namespace KamataEngine;
+using namespace KamataEngine; 
 
 class GameScene {
 public:
