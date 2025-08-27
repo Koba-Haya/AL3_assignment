@@ -2,6 +2,7 @@
 #include <fstream>
 #include <map>
 #include <sstream>
+#include <assert.h>
 
 using namespace KamataEngine;
 

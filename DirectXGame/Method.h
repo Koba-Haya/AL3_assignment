@@ -20,3 +20,8 @@ Matrix4x4 MakeRotateXMatrix(float radian);
 Matrix4x4 MakeRotateYMatrix(float radian);
 Matrix4x4 MakeRotateZMatrix(float radian);
 Vector3 Transform(const Vector3& vector, const Matrix4x4& matrix);
+Vector3 TransformNormal(const Vector3& v, const Matrix4x4& m);
+float Length(const Vector3& v);
+Vector3 Normalize(const Vector3& v);
+// ★追加：AABB同士の交差判定
+bool IntersectAABB(const AABB& a, const AABB& b);
