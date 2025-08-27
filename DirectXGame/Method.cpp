@@ -2,6 +2,7 @@
 #include <cmath>
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <assert.h>
 
 using namespace KamataEngine;
 
@@ -262,9 +263,7 @@ float EaseInOut(float t) {
 	return result;
 }
 
-bool IsCollision(const AABB& a, const AABB& b) {
-	return (a.min.x <= b.max.x && a.max.x >= b.min.x) &&
-	       (a.min.y <= b.max.y && a.max.y >= b.min.y); }
+bool IsCollision(const AABB& a, const AABB& b) { return (a.min.x <= b.max.x && a.max.x >= b.min.x) && (a.min.y <= b.max.y && a.max.y >= b.min.y); }
 
 Matrix4x4 MakeRotateXMatrix(float radian) {
 	Matrix4x4 result;
@@ -298,4 +297,34 @@ Vector3 Transform(const Vector3& vector, const Matrix4x4& matrix) {
 	result.y /= w;
 	result.z /= w;
 	return result;
+}
+
+Vector3 TransformNormal(const Vector3& v, const Matrix4x4& m) {
+	return {
+	    v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0],
+	    v.x * m.m[0][1] + v.y * m.m[1][1] + v.z * m.m[2][1],
+	    v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2],
+	};
+}
+
+float Length(const Vector3& v) {
+	float result;
+	result = {sqrtf(powf(v.x, 2) + powf(v.y, 2) + powf(v.z, 2))};
+	return result;
+}
+
+Vector3 Normalize(const Vector3& v) {
+	float len = Length(v);
+	return {v.x / len, v.y / len, v.z / len};
+}
+
+bool IntersectAABB(const AABB& a, const AABB& b) {
+	// 1軸でも重なっていなければfalse
+	if (a.max.x < b.min.x || a.min.x > b.max.x)
+		return false;
+	if (a.max.y < b.min.y || a.min.y > b.max.y)
+		return false;
+	if (a.max.z < b.min.z || a.min.z > b.max.z)
+		return false;
+	return true;
 }

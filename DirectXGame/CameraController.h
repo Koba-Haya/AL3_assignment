@@ -29,7 +29,7 @@ private:
 	// プレイヤー
 	Player* target_ = nullptr;
 	// 追従対象とカメラの座標の差（オフセット）
-	Vector3 targetOffset_ = {0.0f, 0.0f, -15.0f};
+	Vector3 targetOffset_ = {0.0f, 15.0f, -20.0f};
 	// カメラ移動範囲
 	Ract movableArea_ = {0.0f, 100.0f, 0.0f, 100.0f};
 	// カメラの目標座標
@@ -40,4 +40,7 @@ private:
 	static inline const float kVelocityBias = 20.0f;
 	// 追従対象の各方向へのカメラ移動範囲
 	static inline const Ract margin = {-5.0f, 5.0f, 0.0f, 3.0f};
+
+	bool lockYWhileAir_ = true; // ジャンプ中はY追従を止める
+	float lockedY_ = 0.0f;      // 最後に接地していたY（カメラ目標Y）
 };
