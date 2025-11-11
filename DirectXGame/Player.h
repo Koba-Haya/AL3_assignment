@@ -172,4 +172,8 @@ private:
 
 	float coyoteTime_ = 0.08f; // コヨーテ猶予（離陸直後でもジャンプ可）
 	float coyoteLeft_ = 0.0f;
+
+	// ===== 二段ジャンプ管理 =====
+	int maxJumps_ = 2;  // 総ジャンプ回数（地上ジャンプ+空中ジャンプ）
+	int jumpsUsed_ = 0; // 使ったジャンプ回数（着地時のみリセット）
 };

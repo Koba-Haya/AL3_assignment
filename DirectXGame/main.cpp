@@ -18,12 +18,16 @@ void UpdateScene();
 void DrawScene();
 
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
-	KamataEngine::Initialize(L"LE2B_10_コバヤシ_ハヤト_棘走");
+	KamataEngine::Initialize(L"LE2B_09_コバヤシ_ハヤト_");
 	DirectXCommon* dxCommon = DirectXCommon::GetInstance();
 
-	scene = Scene::kTitle;
+	/*scene = Scene::kTitle;
 	titleScene = new TitleScene;
-	titleScene->Initialize(false); // ★最初は透明で開始（戻りフェードインしない）
+	titleScene->Initialize(false);*/ // ★最初は透明で開始（戻りフェードインしない）
+
+	scene = Scene::kGame;
+	gameScene = new GameScene;
+	gameScene->Initialize();
 
 	while (true) {
 		if (KamataEngine::Update()) {
