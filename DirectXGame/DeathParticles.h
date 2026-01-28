@@ -32,7 +32,7 @@ private:
 	// 色変更オブジェクト
 	ObjectColor objectColor_;
 	// 色の数値
-	Vector4 color_;
+	Vector4 color_ = {1.0f, 1.0f, 1.0f, 1.0f};
 
 	std::array<WorldTransform, kNumParticles> worldTransforms_;
 

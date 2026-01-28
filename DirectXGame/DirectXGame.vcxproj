@@ -118,8 +118,10 @@
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="ResultScene.cpp" />
     <ClCompile Include="Skydome.cpp" />
+    <ClCompile Include="SoundManager.cpp" />
     <ClCompile Include="TitleScene.cpp" />
     <ClCompile Include="TransformWorld.cpp" />
+    <ClCompile Include="WireBlock.cpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\shaders\TerrainPS.hlsl">
@@ -208,8 +210,10 @@
     <ClInclude Include="Player.h" />
     <ClInclude Include="ResultScene.h" />
     <ClInclude Include="Skydome.h" />
+    <ClInclude Include="SoundManager.h" />
     <ClInclude Include="TitleScene.h" />
     <ClInclude Include="TransformWorld.h" />
+    <ClInclude Include="WireBlock.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

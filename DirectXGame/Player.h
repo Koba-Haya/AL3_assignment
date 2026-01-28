@@ -15,11 +15,12 @@ enum class LRDirection {
 
 // マップとの当たり判定情報
 struct CollisionMapInfo {
-	bool onCeilingCollision_ = false;
-	bool onGroundCollision_ = false;
-	bool onWallCollision_ = false;
-	bool clampedX_ = false;
-	Vector3 moveAmount_;
+	bool onCeilingCollision_ = false; // 天井に当たっているか
+	bool onGroundCollision_ = false;  // 地面に当たっているか
+	bool onWallCollision_ = false;    // 壁に当たっているか
+	bool clampedX_ = false;           // X方向の移動量が制限されたか
+	Vector3 moveAmount_;              // 実際に適用する移動量
+	int wallNormalX_ = 0;             // 壁の法線（左壁なら+1、右壁なら-1、非接触は0）
 };
 
 enum Corner {
@@ -34,31 +35,22 @@ class Enemy;
 
 class Player {
 public:
-	/// <summary>
-	/// 初期化
-	/// </summary>
-	/// <param name="model">モデル</param>
-	/// <param name="textureHandle">テクスチャハンドル</param>
-	/// <param name="camera">カメラ</param>
 	void Initialize(Model* model, Camera* camera, const Vector3& position);
-
 	void Update();
-
 	void UpdateFreeze();
-
 	void Draw();
-
 	void Move();
 
-	void StartAttack();                                                      // ★追加
-	bool IsAttacking() const { return state_ == ActionState::AttackActive; } // ★追加
+	// ワイヤー開始/解除
+	void StartWire(const Vector3& targetWorldPos);
+	void CancelWireKeepInertia();
+	bool IsWiring() const { return state_ == ActionState::Wire; }
 
-	// 攻撃ヒットボックス公開（Active 中のみ true）
-	bool IsAttackHitboxActive() const { return attackHitboxActive_; } // ★追加
-	AABB GetAttackAABB() const { return attackAabb_; }                // ★追加
-
+	// 座標・速度まわり
 	const KamataEngine::WorldTransform& GetWorldTransform() const;
 	const KamataEngine::Vector3& GetVelocity() const { return velocity_; };
+
+	// マップとの当たり判定用
 	void SetMapChipField(MapChipField* mapChipField);
 	void MapCollisionDetection(CollisionMapInfo& info);
 	Vector3 CornerPosition(const Vector3& center, Corner corner);
@@ -71,109 +63,106 @@ public:
 	void HandleGroundCollision(const CollisionMapInfo& info);
 	void HandleWallCollision(const CollisionMapInfo& info);
 
-	// ワールド座標
+	// 各種情報取得
 	Vector3 GetWorldPosition();
-
-	// AABBを取得
 	AABB GetAABB();
-
-	// 衝突反応
 	void OnCollision(const Enemy* enemy);
-
-	// デスフラグのgetter
 	bool IsDead() const { return isDead_; };
+	bool IsOnGround() const { return onGround_; }
+	bool IsOnWall() const { return onWall_; }
 
-	bool IsOnGround() const { return onGround_; } // ← 追加
+	// ワイヤー回数ゲッター
+	int GetWireLeft() const;
+
+	// ワイヤー使用可能か
+	bool CanUseWire() const { return maxWires_ - wiresUsed_ > 0; }
 
 private:
-	// ★修正：攻撃フェーズを分割
-	enum class ActionState { Move, AttackWindup, AttackActive, AttackRecovery, Dead };
+	enum class ActionState { Move, Wire, Dead };
 	ActionState state_ = ActionState::Move;
 
-	// ★追加：攻撃パラメータ
-	struct AttackParams {
-		// 時間
-		float windup = 0.1f;    // ← 0.10s → 0.12s（溜めをわずかに長く）
-		float active = 0.16f;   // ← 0.08s → 0.16s（当たり時間を倍に）
-		float recovery = 0.18f; // そのまま
+	// ワイヤー設定
+	struct WireParams {
+		float speed = 0.45f;       // ワイヤー中の移動速度（1/60前提、好みで調整）
+		float reachRadius = 0.10f; // ここまで近づいたら到達
+		float maxDistance = 12.0f; // 最大距離（GameScene側でもクランプするが保険）
+	} wire_;
 
-		// モーション演出＆判定
-		float lungeDistance = 2.2f;
+	Vector3 wireTarget_{};
+	bool wireLocked_ = false;
 
-		// ★可変当たり範囲（Active 中に伸びる）
-		float rangeMin = 0.8f; // 直前（短い）
-		float rangeMax = 1.0f; // 発生終わり（長い）
+	// 壁ジャンプ処理
+	void WallJump(int wallNormalX);
 
-		// ★可変“幅”（Windup で狭く→Active で戻る）
-		float widthMin = 0.8f; // Windup 終端の見た目/判定の“幅”
-		float widthMax = 1.0f; // 通常幅（= 既定の幅）
-		float height = 0.8f;   // Y 方向は据え置き
-	} atk_;
-
-	// ★追加：攻撃制御
-	float attackTimer_ = 0.0f; // 現在の攻撃経過時間
-	bool attackHitboxActive_ = false;
-	AABB attackAabb_{};
-
-	// 攻撃クールタイム
-	float attackCooldownSec_ = 0.25f; // 好みで 0.2f〜0.35f くらい
-	float attackCooldownLeft_ = 0.0f; // 0以下で発動可能
-
-	// ★追加：攻撃用メソッド
-	void UpdateAttack(float dt);
-	void BuildAttackAABB(); // 当たり判定の計算
-	float EaseOutCubic(float t) const { return 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t); }
-
-	// ワールド変換データ
 	KamataEngine::WorldTransform worldTransform_;
-	// モデル
 	KamataEngine::Model* model_ = nullptr;
-	// カメラ
 	KamataEngine::Camera* camera_ = nullptr;
 
 	Vector3 velocity_ = {};
-
 	LRDirection lrDirection_ = LRDirection::kRight;
 
-	// 旋回開始時の角度
 	float turnFirstRotationY_ = 0.0f;
-	// 旋回タイマー
 	float turnTimer_ = 0.0f;
 
-	// 接地状態フラグ
-	bool onGround_ = true;
-
-	// マップチップによるフィールド
+	bool onGround_ = true; // 接地フラグ
+	bool onWall_ = false;  // 壁接触フラグ
 	MapChipField* mapChipField_ = nullptr;
-
-	// デスフラグ
 	bool isDead_ = false;
 
+	// 水平方向移動関連
 	static inline const float kAcceleration = 0.03f;
 	static inline const float kAttenuation = 0.05f;
 	static inline const float kRimitRunSpeed = 0.15f;
 	static inline const float kTimeTurn = 0.3f;
 
-	// 重力加速度（下方向）
+	// 重力・落下関連
 	static inline const float kGravityAcceleration = 0.02f;
-	// 最大落下速度（下方向）
 	static inline const float kLimitFallSpeed = 0.3f;
-	// ジャンプ初速（上方向）
+
+	// 通常ジャンプ初速
 	static inline const float kJumpAcceleration = 0.4f;
 
-	// キャラクターの当たり判定サイズ
-	static inline const float kWidth = 0.8f;
-	static inline const float kHeight = 0.8f;
+	// 壁ジャンプ用パラメータ
+	static inline const float kWallJumpVerticalSpeed = 0.4f;       // 壁ジャンプの上方向
+	static inline const float kWallJumpHorizontalSpeed = 0.5f;     // 壁から離れる横速度
+	static inline const float kWallJumpMinDetachVX = 1.0f;         // 最低横速度
+	static inline const float kWallJumpMaxHorizontalSpeed = 0.65f; // 壁ジャンプ中の横上限
+	static inline const float kWallJumpSeparation = 0.08f;         // 壁から押し出す距離
+	static inline const float kWallDetachTime = 0.12f;             // 壁へ戻れない猶予
+	static inline const float kWallSlideFallSpeed = 0.08f;         // 壁スライド落下上限
 
+	// プレイヤー当たり判定サイズ
+	static inline const float kWidth = 1.0f;
+	static inline const float kHeight = 1.0f;
 	static inline const float kBlank = 1.0f;
 
-	float jumpBufferTime_ = 0.10f; // 入力バッファ猶予
+	// ジャンプ入力バッファ
+	float jumpBufferTime_ = 0.10f;
 	float jumpBufferLeft_ = 0.0f;
 
-	float coyoteTime_ = 0.08f; // コヨーテ猶予（離陸直後でもジャンプ可）
+	// コヨーテタイム
+	float coyoteTime_ = 0.08f;
 	float coyoteLeft_ = 0.0f;
 
-	// ===== 二段ジャンプ管理 =====
-	int maxJumps_ = 2;  // 総ジャンプ回数（地上ジャンプ+空中ジャンプ）
-	int jumpsUsed_ = 0; // 使ったジャンプ回数（着地時のみリセット）
+	// ジャンプ回数管理
+	int maxJumps_ = 2;
+	int jumpsUsed_ = 0;
+
+	// 壁ジャンプ回数（床に触れたときだけ回復）
+	int maxWallJumps_ = 1;
+	int wallJumpsUsed_ = 0;
+
+	// 壁ジャンプ後のデタッチ
+	float wallDetachLeft_ = 0.0f;
+	int wallDetachDirX_ = 0; // +1:右へ離脱 / -1:左へ離脱 / 0:なし
+
+	// ワイヤー回数（床に触れたときだけ回復）
+	int maxWires_ = 2;
+	int wiresUsed_ = 0;
+
+	// ワイヤー開始直後に1フレーム移動しないためのウォームアップ
+	int wireWarmupFrames_ = 0;
+
+	// ワイヤー終了フラグ（着地瞬間だけ横速度を整えるため）
+	bool wireEndedThisFrame_ = false;
 };

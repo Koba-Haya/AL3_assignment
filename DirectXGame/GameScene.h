@@ -2,13 +2,14 @@
 #include "CameraController.h"
 #include "DeathParticles.h"
 #include "Enemy.h"
+#include "Fade.h"
+#include "Goal.h"
 #include "KamataEngine.h"
 #include "MapChipField.h"
 #include "Method.h"
 #include "Player.h"
 #include "Skydome.h"
-#include "Fade.h"
-#include "Goal.h"
+#include "WireBlock.h"
 #include <vector>
 
 using namespace KamataEngine;
@@ -27,7 +28,7 @@ public:
 	// 描画
 	void Draw();
 
-	void GenetateBlocks();
+	void GenerateBlocks();
 
 	// すべての当たり判定を行う
 	void CheckAllCollisions();
@@ -42,30 +43,40 @@ public:
 	Result GetResult() const { return result_; } // ゲッター
 private:
 	// カメラ
-	KamataEngine::Camera camera_;
+	Camera camera_;
 	// 3DPlayerモデルデータ
-	KamataEngine::Model* playerModel_ = nullptr;
+	Model* playerModel_ = nullptr;
 	// 3DEnemyモデルデータ
-	KamataEngine::Model* enemyModel_ = nullptr;
+	Model* enemyModel_ = nullptr;
 	// 3DEnemyモデルデータ
-	KamataEngine::Model* particleModel_ = nullptr;
+	Model* particleModel_ = nullptr;
 	// ブロックモデルデータ
-	KamataEngine::Model* modelBlock_ = nullptr;
+	Model* modelBlock_ = nullptr;
 	// 天球モデルデータ
-	KamataEngine::Model* modelSkydome_ = nullptr;
+	Model* modelSkydome_ = nullptr;
+	// ダメージブロックモデル
+	Model* modelDamageBlock_ = nullptr;
+	// ダメージブロックのTransform
+	std::vector<std::vector<WorldTransform*>> worldTransformDamageBlocks_;
 
 	bool isDebugCameraActive_ = false;
 	// デバッグカメラ
-	KamataEngine::DebugCamera* debugCamera_ = nullptr;
+	DebugCamera* debugCamera_ = nullptr;
 
 	// 自キャラ
 	Player* player_ = nullptr;
-
+	// 敵キャラ
+	std::list<Enemy*> enemies_;
 	// 天球
 	Skydome* skydome_ = nullptr;
 
-	// 敵キャラ
-	std::list<Enemy*> enemies_;
+	Model* wireBlockModel_ = nullptr;
+	Model* wireCircleModel_ = nullptr;
+	WireBlock wireViz_;
+	// ワイヤー可視化のロック（確定ターゲット）
+	bool wireVizLocked_ = false;
+	Vector3 wireLockedTarget_{0.0f, 0.0f, 0.0f};
+	bool prevPlayerWiring_ = false;
 
 	// マップチップフィールド
 	MapChipField* mapChipField_;
@@ -88,11 +99,11 @@ private:
 	// 終了フラグ
 	bool finished_ = false;
 
-	std::vector<std::vector<KamataEngine::WorldTransform*>> worldTransformBlocks_;
+	std::vector<std::vector<WorldTransform*>> worldTransformBlocks_;
 
 	Fade* fade_ = nullptr;
 
-    // ★置き換え：直置きのTransform/AABBではなくクラスを持つ
+	// 置き換え：直置きのTransform/AABBではなくクラスを持つ
 	Goal* goal_ = nullptr;
 
 	// ★追加：ゲーム結果
@@ -100,4 +111,7 @@ private:
 
 	Sprite* moveSprite_ = nullptr;
 	uint32_t textureHandle_ = 0;
+
+	bool playedDeathSe_ = false;
+	bool playedGoalSe_ = false;
 };

@@ -33,7 +33,7 @@ private:
 	// カメラ移動範囲
 	Ract movableArea_ = {0.0f, 100.0f, 0.0f, 100.0f};
 	// カメラの目標座標
-	KamataEngine::Vector3 targetCoordinates_;
+	KamataEngine::Vector3 targetCoordinates_ = {0.0f, 0.0f, 0.0f};
 	// 座標補間割合
 	static inline const float kInterpolationRate = 0.9f;
 	// 速度掛け率

@@ -1,10 +1,9 @@
 #include "GameScene.h"
-#include "TitleScene.h"
 #include "ResultScene.h"
+#include "SoundManager.h"
+#include "TitleScene.h"
 #include <KamataEngine.h>
 #include <Windows.h>
-
-using namespace KamataEngine;
 
 GameScene* gameScene = nullptr;
 TitleScene* titleScene = nullptr;
@@ -18,16 +17,18 @@ void UpdateScene();
 void DrawScene();
 
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
-	KamataEngine::Initialize(L"LE2B_09_コバヤシ_ハヤト_");
+	KamataEngine::Initialize(L"LE2B_09_コバヤシ_ハヤト_棘走");
+	SoundManager::Instance().Initialize("Resources/");
 	DirectXCommon* dxCommon = DirectXCommon::GetInstance();
-
-	/*scene = Scene::kTitle;
-	titleScene = new TitleScene;
-	titleScene->Initialize(false);*/ // ★最初は透明で開始（戻りフェードインしない）
-
+#ifdef _DEBUG
 	scene = Scene::kGame;
 	gameScene = new GameScene;
 	gameScene->Initialize();
+#else
+	scene = Scene::kTitle;
+	titleScene = new TitleScene;
+	titleScene->Initialize(false);
+#endif
 
 	while (true) {
 		if (KamataEngine::Update()) {
