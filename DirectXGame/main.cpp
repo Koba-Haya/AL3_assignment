@@ -1,7 +1,7 @@
-#include "GameScene.h"
-#include "ResultScene.h"
+#include "gameScene/GameScene.h"
+#include "resultScene/ResultScene.h"
 #include "SoundManager.h"
-#include "TitleScene.h"
+#include "titleScene/TitleScene.h"
 #include <KamataEngine.h>
 #include <Windows.h>
 

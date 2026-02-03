@@ -63,7 +63,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_WINDOWS;_DEBUG;USE_IMGUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>actor/;camera/;fade/;mapChip/;math/;particle/;scene/;sound/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -86,7 +86,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_WINDOWS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>actor/;camera/;fade/;mapChip/;math/;particle/;scene/;sound/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <Optimization>MinSpace</Optimization>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -106,22 +106,22 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="CameraController.cpp" />
-    <ClCompile Include="DeathParticles.cpp" />
-    <ClCompile Include="Enemy.cpp" />
-    <ClCompile Include="Fade.cpp" />
-    <ClCompile Include="GameScene.cpp" />
-    <ClCompile Include="Goal.cpp" />
+    <ClCompile Include="camera\CameraController.cpp" />
+    <ClCompile Include="particle\DeathParticles.cpp" />
+    <ClCompile Include="actor\enemy\Enemy.cpp" />
+    <ClCompile Include="fade\Fade.cpp" />
+    <ClCompile Include="scene\gameScene\GameScene.cpp" />
+    <ClCompile Include="actor\goal\Goal.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="MapChipField.cpp" />
-    <ClCompile Include="Method.cpp" />
-    <ClCompile Include="Player.cpp" />
-    <ClCompile Include="ResultScene.cpp" />
-    <ClCompile Include="Skydome.cpp" />
-    <ClCompile Include="SoundManager.cpp" />
-    <ClCompile Include="TitleScene.cpp" />
-    <ClCompile Include="TransformWorld.cpp" />
-    <ClCompile Include="WireBlock.cpp" />
+    <ClCompile Include="mapChip\MapChipField.cpp" />
+    <ClCompile Include="math\Method.cpp" />
+    <ClCompile Include="actor\player\Player.cpp" />
+    <ClCompile Include="scene\resultScene\ResultScene.cpp" />
+    <ClCompile Include="actor\skydome\Skydome.cpp" />
+    <ClCompile Include="sound\SoundManager.cpp" />
+    <ClCompile Include="scene\titleScene\TitleScene.cpp" />
+    <ClCompile Include="math\TransformWorld.cpp" />
+    <ClCompile Include="actor\player\WireBlock.cpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\shaders\TerrainPS.hlsl">
@@ -199,21 +199,21 @@
     <None Include="Resources\shaders\Sprite.hlsli" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CameraController.h" />
-    <ClInclude Include="DeathParticles.h" />
-    <ClInclude Include="Enemy.h" />
-    <ClInclude Include="Fade.h" />
-    <ClInclude Include="GameScene.h" />
-    <ClInclude Include="Goal.h" />
-    <ClInclude Include="MapChipField.h" />
-    <ClInclude Include="Method.h" />
-    <ClInclude Include="Player.h" />
-    <ClInclude Include="ResultScene.h" />
-    <ClInclude Include="Skydome.h" />
-    <ClInclude Include="SoundManager.h" />
-    <ClInclude Include="TitleScene.h" />
-    <ClInclude Include="TransformWorld.h" />
-    <ClInclude Include="WireBlock.h" />
+    <ClInclude Include="camera\CameraController.h" />
+    <ClInclude Include="particle\DeathParticles.h" />
+    <ClInclude Include="actor\enemy\Enemy.h" />
+    <ClInclude Include="fade\Fade.h" />
+    <ClInclude Include="scene\gameScene\GameScene.h" />
+    <ClInclude Include="actor\goal\Goal.h" />
+    <ClInclude Include="mapChip\MapChipField.h" />
+    <ClInclude Include="math\Method.h" />
+    <ClInclude Include="actor\player\Player.h" />
+    <ClInclude Include="scene\resultScene\ResultScene.h" />
+    <ClInclude Include="actor\skydome\Skydome.h" />
+    <ClInclude Include="sound\SoundManager.h" />
+    <ClInclude Include="scene\titleScene\TitleScene.h" />
+    <ClInclude Include="math\TransformWorld.h" />
+    <ClInclude Include="actor\player\WireBlock.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

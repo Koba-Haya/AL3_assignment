@@ -1,6 +1,6 @@
 #define NOMINMAX
 #include "CameraController.h"
-#include "Player.h"
+#include "player/Player.h"
 
 void CameraController::Initialize() {
 	// カメラの初期化

@@ -1,15 +1,15 @@
 #pragma once
 #include "CameraController.h"
 #include "DeathParticles.h"
-#include "Enemy.h"
+#include "enemy/Enemy.h"
 #include "Fade.h"
-#include "Goal.h"
+#include "goal/Goal.h"
 #include "KamataEngine.h"
 #include "MapChipField.h"
 #include "Method.h"
-#include "Player.h"
-#include "Skydome.h"
-#include "WireBlock.h"
+#include "player/Player.h"
+#include "skydome/Skydome.h"
+#include "player/WireBlock.h"
 #include <vector>
 
 using namespace KamataEngine;
