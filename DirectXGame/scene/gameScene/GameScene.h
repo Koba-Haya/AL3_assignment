@@ -1,15 +1,18 @@
 #pragma once
 #include "CameraController.h"
 #include "DeathParticles.h"
-#include "enemy/Enemy.h"
 #include "Fade.h"
-#include "goal/Goal.h"
 #include "KamataEngine.h"
 #include "MapChipField.h"
 #include "Method.h"
+#include "enemy/Enemy.h"
+#include "goal/Goal.h"
+#include "platform/CrumblePlatform.h"
 #include "player/Player.h"
-#include "skydome/Skydome.h"
+#include "player/PlayerBullet.h"
 #include "player/WireBlock.h"
+#include "skydome/Skydome.h"
+#include <memory>
 #include <vector>
 
 using namespace KamataEngine;
@@ -41,6 +44,14 @@ public:
 	// ★追加：結果種別
 	enum class Result { kNone, kClear, kFailed };
 	Result GetResult() const { return result_; } // ゲッター
+
+private:
+	void UpdateBullets_();
+	void RemoveDeadEnemies_();
+
+	// オートエイム：射撃ターゲット取得（見つからなければ false）
+	bool TryGetShootTargetPos_(Vector3& outPos) const;
+
 private:
 	// カメラ
 	Camera camera_;
@@ -56,6 +67,17 @@ private:
 	Model* modelSkydome_ = nullptr;
 	// ダメージブロックモデル
 	Model* modelDamageBlock_ = nullptr;
+	// 梯子モデル
+	Model* modelLadder_ = nullptr;
+	// 弾モデル
+	Model* bulletModel_ = nullptr;
+
+	// プレイヤーの弾
+	std::vector<std::unique_ptr<PlayerBullet>> bullets_;
+
+	// 梯子のTransform（保持して使い回す）
+	std::vector<WorldTransform*> ladderWorldTransforms_;
+
 	// ダメージブロックのTransform
 	std::vector<std::vector<WorldTransform*>> worldTransformDamageBlocks_;
 
@@ -106,7 +128,7 @@ private:
 	// 置き換え：直置きのTransform/AABBではなくクラスを持つ
 	Goal* goal_ = nullptr;
 
-	// ★追加：ゲーム結果
+	// ゲーム結果
 	Result result_ = Result::kNone;
 
 	Sprite* moveSprite_ = nullptr;
@@ -114,4 +136,21 @@ private:
 
 	bool playedDeathSe_ = false;
 	bool playedGoalSe_ = false;
+
+	// 崩れる床
+	std::vector<CrumblePlatform*> crumblePlatforms_;
+
+	// 連射
+	float shootCooldown_ = 0.0f;
+	static inline const float kShootIntervalSec = 0.12f; // 連射間隔（調整用）
+
+	// ---- Ammo UI ----
+	static inline const int kDigitCount = 10;
+	uint32_t digitTex_[kDigitCount]{};
+
+	Sprite* ammoCurDigits_[kDigitCount]{}; // 0-9
+	Sprite* ammoMaxDigits_[kDigitCount]{}; // 0-9
+	Sprite* ammoSlashSprite_ = nullptr;
+
+	uint32_t slashTex_ = 0; // "/" 用
 };

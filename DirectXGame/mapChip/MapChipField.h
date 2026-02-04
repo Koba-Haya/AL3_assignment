@@ -4,13 +4,16 @@
 using namespace KamataEngine;
 
 enum class MapChipType {
-	kBlank,  // 空白
-	kBlock,  // ブロック
-	kDamage, // ダメージ（床/壁）
+	kBlank,
+	kBlock,
+	kDamage,
+	kLadder,
+	kCrumbleFloor,
 };
 
 struct MapChipData {
 	std::vector<std::vector<MapChipType>> data;
+	std::vector<std::vector<int>> params;
 };
 
 struct IndexSet {
@@ -18,12 +21,11 @@ struct IndexSet {
 	uint32_t yIndex;
 };
 
-// 範囲矩形
 struct Rect {
-	float left;   // 左端
-	float right;  // 右端
-	float bottom; // 下端
-	float top;    // 上端
+	float left;
+	float right;
+	float bottom;
+	float top;
 };
 
 class MapChipField {
@@ -32,6 +34,11 @@ public:
 	void LoadMapChipCsv(const std::string& filePath);
 
 	MapChipType GetMapChipTypeByIndex(uint32_t xIndex, uint32_t yIndex);
+	int GetMapChipParamByIndex(uint32_t xIndex, uint32_t yIndex);
+
+	void SetMapChipTypeByIndex(uint32_t xIndex, uint32_t yIndex, MapChipType type);
+	void SetMapChipParamByIndex(uint32_t xIndex, uint32_t yIndex, int param);
+
 	Vector3 GetMapChipPositionByIndex(uint32_t xIndex, uint32_t yIndex);
 
 	uint32_t GetNumBlockVertical() { return kNumBlockVertical_; }
@@ -40,13 +47,16 @@ public:
 	IndexSet GetMapChipIndexSetByPosition(const Vector3& position);
 	Rect GetRectByIndex(uint32_t xIndex, uint32_t yIndex);
 
+	const std::vector<Vector3>& GetLadderPositions() const { return ladderPositions_; }
+
+	bool IsSolid(MapChipType t) const;
+
 private:
-	// 1ブロックのサイズ
 	static inline const float kBlockWidth = 1.0f;
 	static inline const float kBlockHeight = 1.0f;
-	// ブロックの個数
 	static inline const uint32_t kNumBlockVertical_ = 20;
 	static inline const uint32_t kNumBlockHorizontal_ = 100;
 
 	MapChipData mapChipData_;
+	std::vector<Vector3> ladderPositions_;
 };

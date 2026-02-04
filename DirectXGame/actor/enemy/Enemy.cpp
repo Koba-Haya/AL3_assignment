@@ -6,14 +6,6 @@
 
 using namespace KamataEngine;
 
-namespace {
-
-bool IsSolid(MapChipType t) {
-	return (t == MapChipType::kBlock) || (t == MapChipType::kDamage);
-}
-
-}
-
 void Enemy::Initialize(Model* model, Camera* camera, const Vector3& position) {
 	model_ = model;
 	camera_ = camera;
@@ -44,16 +36,47 @@ void Enemy::Update() {
 		hurtFlashT_ = std::max(0.0f, hurtFlashT_ - dt);
 	}
 
+	// ---- 死亡中も床判定（マップ衝突）を残す ----
 	if (isDead_) {
 		deathT_ += dt;
-		worldTransform_.translation_.y -= 0.02f;
 
-		worldTransform_.rotation_.z = angleRad;
+		velocity_.x = 0.0f;
+
+		MoveWithMapCollision_();
+
+		// 倒れる
+		const float fallT = std::clamp(deathT_ / kDeathFallTimeSec, 0.0f, 1.0f);
+		worldTransform_.rotation_.z = std::lerp(0.0f, -1.4f, fallT);
+
+		// 縮小（倒れ切った後 → hold後）
+		const float shrinkStart = kDeathFallTimeSec + kDeathHoldTimeSec;
+		if (deathT_ >= shrinkStart) {
+			const float sT = std::clamp((deathT_ - shrinkStart) / kDeathShrinkTimeSec, 0.0f, 1.0f);
+			const float s = std::lerp(1.0f, 0.0f, sT);
+			worldTransform_.scale_ = {s, s, s};
+		} else {
+			worldTransform_.scale_ = {1.0f, 1.0f, 1.0f};
+		}
+
+		// AABB更新（縮小したら当たり判定も小さくする）
+		const Vector3& p = worldTransform_.translation_;
+		const float half = (kWidth * 0.5f) * worldTransform_.scale_.x;
+		const float halfH = (kHeight * 0.5f) * worldTransform_.scale_.y;
+
+		aabb_.min = {p.x - half, p.y - halfH, p.z - half};
+		aabb_.max = {p.x + half, p.y + halfH, p.z + half};
+
 		WorldTransformUpdate(worldTransform_);
 		worldTransform_.TransferMatrix();
+
+		worldTransform_.translation_.x += externalMove_.x;
+		worldTransform_.translation_.y += externalMove_.y;
+		worldTransform_.translation_.z += externalMove_.z;
+		externalMove_ = {0.0f, 0.0f, 0.0f};
 		return;
 	}
 
+	// ---- 生存時の通常移動 ----
 	MoveWithMapCollision_();
 
 	worldTransform_.rotation_.z = angleRad;
@@ -65,6 +88,11 @@ void Enemy::Update() {
 
 	WorldTransformUpdate(worldTransform_);
 	worldTransform_.TransferMatrix();
+
+	worldTransform_.translation_.x += externalMove_.x;
+	worldTransform_.translation_.y += externalMove_.y;
+	worldTransform_.translation_.z += externalMove_.z;
+	externalMove_ = {0.0f, 0.0f, 0.0f};
 }
 
 void Enemy::MoveWithMapCollision_() {
@@ -141,7 +169,7 @@ bool Enemy::WillFallFromEdge_(float nextMoveX) const {
 
 	IndexSet idx = mapChipField_->GetMapChipIndexSetByPosition(probe);
 	MapChipType type = mapChipField_->GetMapChipTypeByIndex(idx.xIndex, idx.yIndex);
-	return !IsSolid(type);
+	return !mapChipField_->IsSolid(type);
 }
 
 void Enemy::SetMapChipField(MapChipField* mapChipField) {
@@ -169,7 +197,7 @@ void Enemy::SnapToGround_() {
 	auto test = [&](const Vector3& p) {
 		IndexSet idx = mapChipField_->GetMapChipIndexSetByPosition(p);
 		MapChipType type = mapChipField_->GetMapChipTypeByIndex(idx.xIndex, idx.yIndex);
-		if (!IsSolid(type)) {
+		if (!mapChipField_->IsSolid(type)) {
 			return;
 		}
 		Rect r = mapChipField_->GetRectByIndex(idx.xIndex, idx.yIndex);
@@ -211,7 +239,7 @@ void Enemy::MapCollisionUp_(CollisionInfo& info) {
 	auto testPoint = [&](const Vector3& p) {
 		IndexSet idx = mapChipField_->GetMapChipIndexSetByPosition(p);
 		MapChipType type = mapChipField_->GetMapChipTypeByIndex(idx.xIndex, idx.yIndex);
-		if (!IsSolid(type)) {
+		if (!mapChipField_->IsSolid(type)) {
 			return;
 		}
 		Rect r = mapChipField_->GetRectByIndex(idx.xIndex, idx.yIndex);
@@ -252,7 +280,7 @@ void Enemy::MapCollisionDown_(CollisionInfo& info) {
 	auto testPoint = [&](const Vector3& p) {
 		IndexSet idx = mapChipField_->GetMapChipIndexSetByPosition(p);
 		MapChipType type = mapChipField_->GetMapChipTypeByIndex(idx.xIndex, idx.yIndex);
-		if (!IsSolid(type)) {
+		if (!mapChipField_->IsSolid(type)) {
 			return;
 		}
 		Rect r = mapChipField_->GetRectByIndex(idx.xIndex, idx.yIndex);
@@ -299,7 +327,7 @@ void Enemy::MapCollisionRight_(CollisionInfo& info) {
 	auto testPoint = [&](const Vector3& p) {
 		IndexSet idx = mapChipField_->GetMapChipIndexSetByPosition(p);
 		MapChipType type = mapChipField_->GetMapChipTypeByIndex(idx.xIndex, idx.yIndex);
-		if (!IsSolid(type)) {
+		if (!mapChipField_->IsSolid(type)) {
 			return;
 		}
 		Rect r = mapChipField_->GetRectByIndex(idx.xIndex, idx.yIndex);
@@ -341,7 +369,7 @@ void Enemy::MapCollisionLeft_(CollisionInfo& info) {
 	auto testPoint = [&](const Vector3& p) {
 		IndexSet idx = mapChipField_->GetMapChipIndexSetByPosition(p);
 		MapChipType type = mapChipField_->GetMapChipTypeByIndex(idx.xIndex, idx.yIndex);
-		if (!IsSolid(type)) {
+		if (!mapChipField_->IsSolid(type)) {
 			return;
 		}
 		Rect r = mapChipField_->GetRectByIndex(idx.xIndex, idx.yIndex);
@@ -423,4 +451,18 @@ void Enemy::ApplyKnockback(const Vector3& dir, float power) {
 	worldTransform_.translation_.x += nd.x * power;
 	worldTransform_.translation_.y += nd.y * power;
 	worldTransform_.translation_.z += nd.z * power;
+}
+
+void Enemy::AddExternalMove(const Vector3& delta) {
+	externalMove_.x += delta.x;
+	externalMove_.y += delta.y;
+	externalMove_.z += delta.z;
+}
+
+bool Enemy::IsDeathEffectFinished() const {
+	if (!isDead_) {
+		return false;
+	}
+	const float endT = kDeathFallTimeSec + kDeathHoldTimeSec + kDeathShrinkTimeSec;
+	return deathT_ >= endT;
 }

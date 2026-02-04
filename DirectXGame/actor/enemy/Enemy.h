@@ -17,6 +17,9 @@ public:
 
 	void SetMapChipField(MapChipField* mapChipField);
 
+	// ★追加：床など外部要因の移動量を加算（次のUpdateで適用）
+	void AddExternalMove(const Vector3& delta);
+
 	AABB GetAABB();
 	void OnCollision(const Player* player);
 
@@ -24,6 +27,9 @@ public:
 	void ApplyKnockback(const Vector3& dir, float power);
 
 	bool IsDead() const { return isDead_; }
+
+	// 追加：死亡演出が終わったら true（このタイミングで delete する）
+	bool IsDeathEffectFinished() const;
 
 private:
 	struct CollisionInfo {
@@ -75,4 +81,11 @@ private:
 
 	static inline const float kGravityAcceleration = 0.02f;
 	static inline const float kLimitFallSpeed = 0.30f;
+
+	Vector3 externalMove_{0.0f, 0.0f, 0.0f};
+
+	// 死亡演出パラメータ
+	static inline const float kDeathFallTimeSec = 0.35f;   // 倒れるまで
+	static inline const float kDeathHoldTimeSec = 0.35f;   // 倒れて停止
+	static inline const float kDeathShrinkTimeSec = 0.55f; // 縮小して消えるまで
 };

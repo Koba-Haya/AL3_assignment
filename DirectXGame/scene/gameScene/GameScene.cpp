@@ -11,63 +11,7 @@ namespace {
 constexpr float kFadeTimeSec = 1.0f;
 constexpr int kScreenW = 1280;
 constexpr int kScreenH = 720;
-
-// 左クリックのトリガー（押した瞬間）
-static bool IsLeftClickTriggered() {
-	static SHORT prev = 0;
-	SHORT now = GetAsyncKeyState(VK_LBUTTON);
-	bool triggered = ((now & 0x8000) != 0) && ((prev & 0x8000) == 0);
-	prev = now;
-	return triggered;
-}
-
-// クライアント座標のマウス位置を取る
-static POINT GetMouseClientPos() {
-	POINT p{};
-	GetCursorPos(&p);
-	HWND hwnd = GetActiveWindow();
-	ScreenToClient(hwnd, &p);
-	return p;
-}
-
-// 画面座標→ワールドレイ（DirectXのNDC: zは0..1）
-static void BuildPickRay(const Camera& cam, int mouseX, int mouseY, Vector3& outOrigin, Vector3& outDir) {
-	float nx = (2.0f * mouseX) / float(kScreenW) - 1.0f;
-	float ny = 1.0f - (2.0f * mouseY) / float(kScreenH);
-
-	// NDC空間の近点/遠点
-	Vector3 ndcNear = {nx, ny, 0.0f};
-	Vector3 ndcFar = {nx, ny, 1.0f};
-
-	Matrix4x4 vp = MatrixMultiply(cam.matView, cam.matProjection);
-	Matrix4x4 invVP = Inverse(vp);
-
-	Vector3 worldNear = Transform(ndcNear, invVP);
-	Vector3 worldFar = Transform(ndcFar, invVP);
-
-	outOrigin = worldNear;
-	Vector3 d = {worldFar.x - worldNear.x, worldFar.y - worldNear.y, worldFar.z - worldNear.z};
-	outDir = Normalize(d);
-}
-
-// レイと平面(z=0)の交点を求める（ゲームがほぼz=0で動くのでこれでOK）
-static bool RayPlaneZ0(const Vector3& origin, const Vector3& dir, Vector3& outHit) {
-	const float denom = dir.z;
-	if (std::fabs(denom) < 1e-6f) {
-		return false;
-	}
-	float t = (0.0f - origin.z) / denom;
-	if (t < 0.0f) {
-		return false;
-	}
-	outHit = {origin.x + dir.x * t, origin.y + dir.y * t, 0.0f};
-	return true;
-}
 } // namespace
-
-// static inline bool IntersectAABB(const AABB& a, const AABB& b) {
-//	return (a.min.x <= b.max.x && a.max.x >= b.min.x) && (a.min.y <= b.max.y && a.max.y >= b.min.y) && (a.min.z <= b.max.z && a.max.z >= b.min.z);
-// }
 
 GameScene::~GameScene() {
 	// 3Dモデルデータの開放
@@ -90,9 +34,20 @@ GameScene::~GameScene() {
 	delete deathParticles_;
 	// フェードの開放
 	delete fade_;
+	// 梯子モデルの開放
+	delete modelLadder_;
 	// ゴールの開放
 	delete goal_;
 	goal_ = nullptr;
+	// Ammo UIの開放
+	for (int i = 0; i < kDigitCount; ++i) {
+		delete ammoCurDigits_[i];
+		ammoCurDigits_[i] = nullptr;
+		delete ammoMaxDigits_[i];
+		ammoMaxDigits_[i] = nullptr;
+	}
+	delete ammoSlashSprite_;
+	ammoSlashSprite_ = nullptr;
 	// 敵キャラの開放
 	for (Enemy* enemy : enemies_) {
 		delete enemy;
@@ -120,6 +75,21 @@ GameScene::~GameScene() {
 		}
 	}
 	worldTransformDamageBlocks_.clear();
+
+	// 梯子Transformの解放
+	for (WorldTransform* wt : ladderWorldTransforms_) {
+		delete wt;
+	}
+	ladderWorldTransforms_.clear();
+
+	for (CrumblePlatform* p : crumblePlatforms_) {
+		delete p;
+	}
+	crumblePlatforms_.clear();
+
+	// 弾モデルの開放
+	delete bulletModel_;
+	bulletModel_ = nullptr;
 }
 
 void GameScene::Initialize() {
@@ -136,6 +106,8 @@ void GameScene::Initialize() {
 	modelSkydome_ = Model::CreateFromOBJ("sky_sphere", true);
 	// ダメージブロックモデル
 	modelDamageBlock_ = Model::CreateFromOBJ("damageBlock", true);
+	// 梯子モデルの生成
+	modelLadder_ = Model::CreateFromOBJ("ladder", true);
 
 	// カメラのfarZを適度に大きい値に
 	camera_.farZ = 1000.0f;
@@ -202,7 +174,10 @@ void GameScene::Initialize() {
 	fade_ = new Fade();
 	fade_->Initialize();
 
-	// ★ゲーム開始時は黒→透明のフェードイン。完了までは動かさない
+	// プレイヤーの弾モデルの生成
+	bulletModel_ = Model::CreateFromOBJ("bullet", true);
+
+	// ゲーム開始時は黒→透明のフェードイン。完了までは動かさない
 	fade_->Start(Fade::Status::FadeIn, kFadeTimeSec);
 	phase_ = Phase::kFadeIn;
 
@@ -236,6 +211,27 @@ void GameScene::Initialize() {
 	playedGoalSe_ = false;
 
 	SoundManager::Instance().PlayBgmGame(0.25f);
+
+	// ---- Ammo UI ----
+	for (int i = 0; i < 10; ++i) {
+		const std::string path = "ui/" + std::to_string(i) + ".png";
+		digitTex_[i] = TextureManager::Load(path);
+	}
+	slashTex_ = TextureManager::Load("ui/slash.png");
+
+	const Vector2 base = {1060.0f, 20.0f};
+	const Vector2 digitSize = {48.0f, 64.0f};
+
+	for (int i = 0; i < kDigitCount; ++i) {
+		ammoCurDigits_[i] = Sprite::Create(digitTex_[i], base);
+		ammoCurDigits_[i]->SetSize(digitSize);
+
+		ammoMaxDigits_[i] = Sprite::Create(digitTex_[i], {base.x + 104.0f, base.y});
+		ammoMaxDigits_[i]->SetSize(digitSize);
+	}
+
+	ammoSlashSprite_ = Sprite::Create(slashTex_, {base.x + 52.0f, base.y});
+	ammoSlashSprite_->SetSize(digitSize);
 }
 
 void GameScene::Update() {
@@ -308,72 +304,114 @@ void GameScene::Update() {
 			goal_->Update();
 		}
 
-		// ワイヤー状態の変化を検出して、終了したらロック解除
-		const bool nowWiring = (player_ && player_->IsWiring());
-		if (prevPlayerWiring_ && !nowWiring) {
-			wireVizLocked_ = false;
-		}
-		prevPlayerWiring_ = nowWiring;
-
-		// 左クリック（押した瞬間）でターゲット確定＆開始
-		if (player_ && IsLeftClickTriggered() && !player_->IsWiring()) {
-			POINT mp = GetMouseClientPos();
-
-			Vector3 rayO{}, rayD{};
-			BuildPickRay(camera_, mp.x, mp.y, rayO, rayD);
-
-			Vector3 clickedWorld{};
-			if (RayPlaneZ0(rayO, rayD, clickedWorld)) {
-				const Vector3 playerPos = player_->GetWorldTransform().translation_;
-				Vector3 to = {clickedWorld.x - playerPos.x, clickedWorld.y - playerPos.y, clickedWorld.z - playerPos.z};
-
-				float len = Length(to);
-				if (len > 1e-6f) {
-					Vector3 dir = Normalize(to);
-
-					const float maxDist = 12.0f;
-					float useDist = std::min(len, maxDist);
-
-					Vector3 target = {playerPos.x + dir.x * useDist, playerPos.y + dir.y * useDist, playerPos.z + dir.z * useDist};
-
-					const bool before = player_->IsWiring();
-					player_->StartWire(target);
-					const bool after = player_->IsWiring();
-
-					if (!before && after) {
-						SoundManager::Instance().PlaySeWireMove(0.75f);
-						wireVizLocked_ = true;
-						wireLockedTarget_ = target;
-					}
-				}
+		// ★Jキーでワイヤー発射/解除（トグル）
+		if (player_ && Input::GetInstance()->TriggerKey(DIK_J)) {
+			player_->ToggleWire();
+			if (player_->IsWiring()) {
+				SoundManager::Instance().PlaySeWireMove(0.75f);
 			}
 		}
 
-		// 可視化更新
-		if (player_) {
+		// 可視化更新：ワイヤー中だけ（アンカー or 発射中の先端）
+		if (player_ && player_->IsWiring()) {
 			const Vector3 playerPos = player_->GetWorldTransform().translation_;
+			const Vector3 target = player_->GetWireVisualTarget();
+			wireViz_.Update(playerPos, target);
+		}
 
-			if (wireVizLocked_ && player_->IsWiring()) {
-				// 移動中は固定
-				wireViz_.Update(playerPos, wireLockedTarget_);
-			} else {
-				// 移動してないなら、使える時だけプレビュー更新
-				if (player_->CanUseWire()) {
-					POINT mp = GetMouseClientPos();
-					Vector3 rayO{}, rayD{};
-					BuildPickRay(camera_, mp.x, mp.y, rayO, rayD);
-
-					Vector3 cursorWorld{};
-					if (RayPlaneZ0(rayO, rayD, cursorWorld)) {
-						wireViz_.Update(playerPos, cursorWorld);
-					}
-				}
-				// 使えないなら更新しない（前フレームの値が残るのが嫌なら Hide を使うが、今回は Draw 条件で消すのでOK）
-			}
+		// 床更新（先に動かす）
+		for (CrumblePlatform* p : crumblePlatforms_) {
+			p->Update();
 		}
 
 		// 自キャラ更新など既存処理
 		player_->Update();
+
+		// ---- 連射クールダウン更新（追加）----
+		const float dt = 1.0f / 60.0f;
+		shootCooldown_ = std::max(0.0f, shootCooldown_ - dt);
+
+		// ---- 攻撃入力（ワイヤー/はしご中は Player 側で弾く）----
+		if (player_) {
+			// 近距離（突進）
+			if (Input::GetInstance()->TriggerKey(DIK_K)) {
+				player_->BeginDashAttack();
+			}
+
+			// 遠距離（射撃）: 長押し連射
+			if (Input::GetInstance()->PushKey(DIK_L) && shootCooldown_ <= 0.0f) {
+				if (player_->TryConsumeAmmoAndStartReloadIfNeeded()) {
+					const Vector3 pos = player_->GetMuzzleWorldPos();
+
+					const float bulletSpeed = 0.45f;
+
+					Vector3 targetPos{};
+					Vector3 dir{};
+
+					if (TryGetShootTargetPos_(targetPos)) {
+						Vector3 to = {targetPos.x - pos.x, targetPos.y - pos.y, targetPos.z - pos.z};
+						if (Length(to) < 1e-6f) {
+							dir = player_->GetFacingDir();
+						} else {
+							dir = Normalize(to);
+						}
+					} else {
+						// 敵がいないときは正面
+						dir = player_->GetFacingDir();
+					}
+
+					Vector3 vel = {dir.x * bulletSpeed, dir.y * bulletSpeed, dir.z * bulletSpeed};
+
+					auto b = std::make_unique<PlayerBullet>();
+					b->Initialize(bulletModel_, &camera_, pos, vel);
+					bullets_.push_back(std::move(b));
+
+					shootCooldown_ = kShootIntervalSec;
+				} else {
+					shootCooldown_ = 0.06f;
+				}
+			}
+		}
+
+		// 弾更新
+		UpdateBullets_();
+
+		auto isStandingOn = [](const AABB& actor, const AABB& floorAabb) -> bool {
+			const float epsY = 0.03f;
+
+			const bool overlapX = (actor.max.x > floorAabb.min.x) && (actor.min.x < floorAabb.max.x);
+			const bool overlapZ = (actor.max.z > floorAabb.min.z) && (actor.min.z < floorAabb.max.z);
+
+			const float actorBottom = actor.min.y;
+			const float floorTop = floorAabb.max.y;
+
+			const bool nearTop = (actorBottom >= floorTop - 0.08f) && (actorBottom <= floorTop + epsY);
+			return overlapX && overlapZ && nearTop;
+		};
+
+		// ---- 崩れる床：踏まれてたら OnStepped
+		for (CrumblePlatform* p : crumblePlatforms_) {
+			if (!p || !p->IsActive()) {
+				continue;
+			}
+
+			const AABB fa = p->GetAABB();
+
+			if (player_ && isStandingOn(player_->GetAABB(), fa)) {
+				p->OnStepped();
+				continue;
+			}
+
+			for (Enemy* e : enemies_) {
+				if (!e)
+					continue;
+				if (isStandingOn(e->GetAABB(), fa)) {
+					p->OnStepped();
+					break;
+				}
+			}
+		}
+
 		skydome_->Update();
 		for (Enemy* enemy : enemies_) {
 			enemy->Update();
@@ -548,6 +586,11 @@ void GameScene::Draw() {
 		for (Enemy* enemy : enemies_) {
 			enemy->Draw();
 		}
+		// 崩れる床の描画
+		for (CrumblePlatform* p : crumblePlatforms_) {
+			if (p)
+				p->Draw();
+		}
 		// ブロックの描画
 		for (std::vector<WorldTransform*>& worldTransformBlockLine : worldTransformBlocks_) {
 			for (WorldTransform* worldTransformBlock : worldTransformBlockLine) {
@@ -569,6 +612,34 @@ void GameScene::Draw() {
 			goal_->Draw(camera_);
 		Sprite::PreDraw(DirectXCommon::GetInstance()->GetCommandList());
 		moveSprite_->Draw();
+		// Ammo UI draw
+		if (player_ && ammoSlashSprite_) {
+			const int cur = std::clamp(player_->GetAmmo(), 0, 9);
+			const int mx = std::clamp(player_->GetAmmoMax(), 0, 9);
+
+			const float alpha = player_->IsReloading() ? 0.45f : 1.0f;
+
+			// 色反映（毎フレームでOK：UIだけ）
+			for (int i = 0; i < kDigitCount; ++i) {
+				if (ammoCurDigits_[i]) {
+					ammoCurDigits_[i]->SetColor({1.0f, 1.0f, 1.0f, alpha});
+				}
+				if (ammoMaxDigits_[i]) {
+					ammoMaxDigits_[i]->SetColor({1.0f, 1.0f, 1.0f, alpha});
+				}
+			}
+			ammoSlashSprite_->SetColor({1.0f, 1.0f, 1.0f, alpha});
+
+			// 描画（必要な数字だけ）
+			if (ammoCurDigits_[cur]) {
+				ammoCurDigits_[cur]->Draw();
+			}
+			ammoSlashSprite_->Draw();
+			if (ammoMaxDigits_[mx]) {
+				ammoMaxDigits_[mx]->Draw();
+			}
+		}
+
 		Sprite::PostDraw();
 		// フェードは最後に
 		fade_->Draw();
@@ -585,7 +656,14 @@ void GameScene::Draw() {
 			enemy->Draw();
 		}
 
-		const bool canDrawWireViz = (player_ && (player_->IsWiring() || player_->CanUseWire()));
+		// ---- 弾の描画 ----
+		for (auto& b : bullets_) {
+			if (b) {
+				b->Draw();
+			}
+		}
+
+		const bool canDrawWireViz = (player_ && player_->IsWiring());
 		if (canDrawWireViz) {
 			// ブロック列
 			if (wireBlockModel_) {
@@ -605,6 +683,11 @@ void GameScene::Draw() {
 			}
 		}
 
+		// 崩れる床の描画
+		for (CrumblePlatform* p : crumblePlatforms_) {
+			if (p)
+				p->Draw();
+		}
 		// ブロックの描画
 		for (std::vector<WorldTransform*>& worldTransformBlockLine : worldTransformBlocks_) {
 			for (WorldTransform* worldTransformBlock : worldTransformBlockLine) {
@@ -622,11 +705,51 @@ void GameScene::Draw() {
 			}
 		}
 
+		// 梯子モデルの描画（毎フレームInitializeしない）
+		if (modelLadder_) {
+			for (WorldTransform* wt : ladderWorldTransforms_) {
+				if (!wt) {
+					continue;
+				}
+				wt->matWorld_ = MakeAffineMatrix(wt->scale_, wt->rotation_, wt->translation_);
+				wt->TransferMatrix();
+				modelLadder_->Draw(*wt, camera_);
+			}
+		}
+
 		// ゴール描画
 		if (goal_)
 			goal_->Draw(camera_);
 		Sprite::PreDraw(DirectXCommon::GetInstance()->GetCommandList());
 		moveSprite_->Draw();
+		// Ammo UI draw
+		if (player_ && ammoSlashSprite_) {
+			const int cur = std::clamp(player_->GetAmmo(), 0, 9);
+			const int mx = std::clamp(player_->GetAmmoMax(), 0, 9);
+
+			const float alpha = player_->IsReloading() ? 0.45f : 1.0f;
+
+			// 色反映（毎フレームでOK：UIだけ）
+			for (int i = 0; i < kDigitCount; ++i) {
+				if (ammoCurDigits_[i]) {
+					ammoCurDigits_[i]->SetColor({1.0f, 1.0f, 1.0f, alpha});
+				}
+				if (ammoMaxDigits_[i]) {
+					ammoMaxDigits_[i]->SetColor({1.0f, 1.0f, 1.0f, alpha});
+				}
+			}
+			ammoSlashSprite_->SetColor({1.0f, 1.0f, 1.0f, alpha});
+
+			// 描画（必要な数字だけ）
+			if (ammoCurDigits_[cur]) {
+				ammoCurDigits_[cur]->Draw();
+			}
+			ammoSlashSprite_->Draw();
+			if (ammoMaxDigits_[mx]) {
+				ammoMaxDigits_[mx]->Draw();
+			}
+		}
+
 		Sprite::PostDraw();
 		break;
 	}
@@ -641,6 +764,12 @@ void GameScene::Draw() {
 		if (deathParticles_) {
 			deathParticles_->Draw();
 		}
+
+		// 崩れる床の描画
+		for (CrumblePlatform* p : crumblePlatforms_) {
+			if (p)
+				p->Draw();
+		}
 		// ブロックの描画
 		for (std::vector<WorldTransform*>& worldTransformBlockLine : worldTransformBlocks_) {
 			for (WorldTransform* worldTransformBlock : worldTransformBlockLine) {
@@ -654,7 +783,7 @@ void GameScene::Draw() {
 			for (WorldTransform* wt : line) {
 				if (!wt)
 					continue;
-				modelDamageBlock_->Draw(*wt, camera_);
+			 modelDamageBlock_->Draw(*wt, camera_);
 			}
 		}
 
@@ -672,6 +801,12 @@ void GameScene::Draw() {
 		// 敵キャラの描画
 		for (Enemy* enemy : enemies_) {
 			enemy->Draw();
+		}
+
+		// 崩れる床の描画
+		for (CrumblePlatform* p : crumblePlatforms_) {
+			if (p)
+				p->Draw();
 		}
 		// ブロックの描画
 		for (std::vector<WorldTransform*>& worldTransformBlockLine : worldTransformBlocks_) {
@@ -721,6 +856,12 @@ void GameScene::GenerateBlocks() {
 		worldTransformDamageBlocks_[i].resize(kNumBlockHorizontal);
 	}
 
+	// ★追加：梯子WTをここで作り直す
+	for (WorldTransform* wt : ladderWorldTransforms_) {
+		delete wt;
+	}
+	ladderWorldTransforms_.clear();
+
 	for (uint32_t i = 0; i < kNumBlockVirtical; ++i) {
 		for (uint32_t j = 0; j < kNumBlockHorizontal; ++j) {
 
@@ -731,11 +872,26 @@ void GameScene::GenerateBlocks() {
 				wt->Initialize();
 				wt->translation_ = mapChipField_->GetMapChipPositionByIndex(j, i);
 				worldTransformBlocks_[i][j] = wt;
+
 			} else if (type == MapChipType::kDamage) {
 				WorldTransform* wt = new WorldTransform();
 				wt->Initialize();
 				wt->translation_ = mapChipField_->GetMapChipPositionByIndex(j, i);
 				worldTransformDamageBlocks_[i][j] = wt;
+
+			} else if (type == MapChipType::kLadder) {
+				WorldTransform* wt = new WorldTransform();
+				wt->Initialize();
+				wt->translation_ = mapChipField_->GetMapChipPositionByIndex(j, i);
+				ladderWorldTransforms_.push_back(wt);
+			} else if (type == MapChipType::kCrumbleFloor) {
+				const int param = mapChipField_->GetMapChipParamByIndex(j, i);
+				const int reviveSec = std::clamp(param / 10, 1, 9);
+				const int fallSec = std::clamp(param % 10, 1, 9);
+
+				CrumblePlatform* p = new CrumblePlatform();
+				p->Initialize(modelBlock_, &camera_, mapChipField_->GetMapChipPositionByIndex(j, i), reviveSec, fallSec, mapChipField_);
+				crumblePlatforms_.push_back(p);
 			}
 		}
 	}
@@ -750,9 +906,20 @@ static AABB MakeTileAabbFromRect(const Rect& r) {
 }
 
 void GameScene::CheckAllCollisions() {
-	{
+
+	// プレイヤーの判定用データ
+	AABB playerAabb = player_->GetAABB();
+	Vector3 playerPos = player_->GetWorldPosition();
+
+	// ---- プレイヤー → 敵キャラ ----
+	// 突進攻撃中は接触死しない（攻撃判定を優先）
+	if (player_ && !player_->IsDashAttacking()) {
 		AABB aabb1 = player_->GetAABB();
 		for (Enemy* enemy : enemies_) {
+			if (!enemy || enemy->IsDead()) {
+				continue;
+			}
+
 			AABB aabb2 = enemy->GetAABB();
 			if (IsCollision(aabb1, aabb2)) {
 				player_->OnCollision(enemy);
@@ -761,11 +928,40 @@ void GameScene::CheckAllCollisions() {
 		}
 	}
 
+	// ---- 近距離（突進） → 敵死亡 ----
+	if (player_ && player_->IsDashAttacking()) {
+		const AABB atk = player_->GetDashAttackAABB();
+		for (Enemy* enemy : enemies_) {
+			if (!enemy || enemy->IsDead()) {
+				continue;
+			}
+			if (IsCollision(atk, enemy->GetAABB())) {
+				enemy->TakeDamage(9999);
+			}
+		}
+	}
+
+	// ---- 遠距離（弾） → 敵死亡 ----
+	for (auto& b : bullets_) {
+		if (!b || !b->IsActive()) {
+			continue;
+		}
+
+		const AABB ba = b->GetAABB();
+		for (Enemy* enemy : enemies_) {
+			if (!enemy || enemy->IsDead()) {
+				continue;
+			}
+			if (IsCollision(ba, enemy->GetAABB())) {
+				enemy->TakeDamage(9999);
+				b->Deactivate();
+				break;
+			}
+		}
+	}
+
 	// ダメージタイル衝突（4隅＋中心）
 	{
-		const AABB playerAabb = player_->GetAABB();
-
-		// 5点サンプル（4隅＋中心）
 		Vector3 pts[5] = {
 		    playerAabb.min,
 		    {playerAabb.max.x,                             playerAabb.min.y,                             playerAabb.min.z                            },
@@ -827,4 +1023,62 @@ void GameScene::ChangePhase() {
 	default:
 		break;
 	}
+}
+
+void GameScene::UpdateBullets_() {
+	for (auto& b : bullets_) {
+		if (b) {
+			b->Update();
+		}
+	}
+
+	// 非アクティブ除去
+	bullets_.erase(
+	    std::remove_if(bullets_.begin(), bullets_.end(), [](const std::unique_ptr<PlayerBullet>& b) { return !b || !b->IsActive(); }),
+	    bullets_.end());
+}
+
+void GameScene::RemoveDeadEnemies_() {
+	for (auto it = enemies_.begin(); it != enemies_.end();) {
+		Enemy* e = *it;
+		if (e && e->IsDeathEffectFinished()) {
+			delete e;
+			it = enemies_.erase(it);
+			continue;
+		}
+		++it;
+	}
+}
+
+bool GameScene::TryGetShootTargetPos_(Vector3& outPos) const {
+	if (!player_) {
+		return false;
+	}
+
+	const Vector3 playerPos = player_->GetWorldTransform().translation_;
+
+	float bestDist2 = FLT_MAX;
+	bool found = false;
+
+	for (Enemy* e : enemies_) {
+		if (!e || e->IsDead()) {
+			continue;
+		}
+
+		const AABB a = e->GetAABB();
+		const Vector3 center = {(a.min.x + a.max.x) * 0.5f, (a.min.y + a.max.y) * 0.5f, (a.min.z + a.max.z) * 0.5f};
+
+		const float dx = center.x - playerPos.x;
+		const float dy = center.y - playerPos.y;
+		const float dz = center.z - playerPos.z;
+		const float d2 = dx * dx + dy * dy + dz * dz;
+
+		if (d2 < bestDist2) {
+			bestDist2 = d2;
+			outPos = center;
+			found = true;
+		}
+	}
+
+	return found;
 }

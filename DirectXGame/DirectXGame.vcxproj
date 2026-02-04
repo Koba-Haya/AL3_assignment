@@ -106,10 +106,12 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="actor\platform\CrumblePlatform.cpp" />
     <ClCompile Include="camera\CameraController.cpp" />
     <ClCompile Include="particle\DeathParticles.cpp" />
     <ClCompile Include="actor\enemy\Enemy.cpp" />
     <ClCompile Include="fade\Fade.cpp" />
+    <ClCompile Include="actor\player\PlayerBullet.cpp" />
     <ClCompile Include="scene\gameScene\GameScene.cpp" />
     <ClCompile Include="actor\goal\Goal.cpp" />
     <ClCompile Include="main.cpp" />
@@ -199,10 +201,12 @@
     <None Include="Resources\shaders\Sprite.hlsli" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="actor\platform\CrumblePlatform.h" />
     <ClInclude Include="camera\CameraController.h" />
     <ClInclude Include="particle\DeathParticles.h" />
     <ClInclude Include="actor\enemy\Enemy.h" />
     <ClInclude Include="fade\Fade.h" />
+    <ClInclude Include="actor\player\PlayerBullet.h" />
     <ClInclude Include="scene\gameScene\GameScene.h" />
     <ClInclude Include="actor\goal\Goal.h" />
     <ClInclude Include="mapChip\MapChipField.h" />

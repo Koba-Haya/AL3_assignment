@@ -1,74 +1,155 @@
 #include "MapChipField.h"
-#include <fstream>
-#include <map>
-#include <sstream>
 #include <assert.h>
+#include <fstream>
+#include <sstream>
 
 using namespace KamataEngine;
 
 namespace {
 
-std::map<std::string, MapChipType> mapChipTable = {
-    {"0", MapChipType::kBlank },
-    {"1", MapChipType::kBlock },
-    {"2", MapChipType::kDamage},
-};
+bool TryParseTileCode(const std::string& word, int& outKindDigit, int& outParam) {
+	// 空や非数値は無効
+	if (word.empty()) {
+		return false;
+	}
 
+	// 0,1,2... や 154 などを想定
+	int v = 0;
+	try {
+		size_t idx = 0;
+		v = std::stoi(word, &idx, 10);
+		if (idx != word.size()) {
+			return false;
+		}
+	} catch (...) {
+		return false;
+	}
+
+	if (v < 0) {
+		return false;
+	}
+
+	if (v == 0) {
+		outKindDigit = 0;
+		outParam = 0;
+		return true;
+	}
+
+	// 1桁目（百の位ではなく “先頭の桁”）が必要なので、文字列ベースで取る
+	const char c0 = word[0];
+	if (c0 < '0' || c0 > '9') {
+		return false;
+	}
+
+	outKindDigit = (c0 - '0');
+
+	// 残り桁を param 扱い（無ければ0）
+	if (word.size() == 1) {
+		outParam = 0;
+		return true;
+	}
+
+	outParam = 0;
+	try {
+		outParam = std::stoi(word.substr(1));
+	} catch (...) {
+		outParam = 0;
+	}
+	return true;
 }
 
-void MapChipField::ResetMapChipData() {
-	// マップチップデータをリセット
-	mapChipData_.data.clear();
-	mapChipData_.data.resize(kNumBlockVertical_);
-	for (std::vector<MapChipType>& mapChipDataLine : mapChipData_.data) {
-		mapChipDataLine.resize(kNumBlockHorizontal_);
+MapChipType KindDigitToType(int kindDigit) {
+	switch (kindDigit) {
+	case 0:
+		return MapChipType::kBlank;
+	case 1:
+		return MapChipType::kBlock;
+	case 2:
+		return MapChipType::kDamage;
+	case 3:
+		return MapChipType::kLadder;
+	case 4:
+		return MapChipType::kCrumbleFloor;
+	default:
+		return MapChipType::kBlank;
 	}
 }
 
+} // namespace
+
+void MapChipField::ResetMapChipData() {
+	mapChipData_.data.clear();
+	mapChipData_.data.resize(kNumBlockVertical_);
+	mapChipData_.params.clear();
+	mapChipData_.params.resize(kNumBlockVertical_);
+
+	for (uint32_t i = 0; i < kNumBlockVertical_; ++i) {
+		mapChipData_.data[i].resize(kNumBlockHorizontal_);
+		mapChipData_.params[i].resize(kNumBlockHorizontal_);
+	}
+
+	ladderPositions_.clear();
+}
+
 void MapChipField::LoadMapChipCsv(const std::string& filePath) {
-	// マップチップデータをリセット
 	ResetMapChipData();
 
-	// ファイルを開く
 	std::ifstream file;
 	file.open(filePath);
 	assert(file.is_open());
 
-	// マップチップCSV
 	std::stringstream mapChipCsv;
-	// ファイルの内容を文字列ストリームにコピー
 	mapChipCsv << file.rdbuf();
-	// ファイルを閉じる
 	file.close();
-	// CSVからマップチップデータを読み込む
-	for (uint32_t i = 0; i < kNumBlockVertical_; ++i) {
+
+	for (uint32_t y = 0; y < kNumBlockVertical_; ++y) {
 		std::string line;
 		getline(mapChipCsv, line);
-
-		// 1行分の文字列をストリームに変換して解析しやすくする
 		std::istringstream line_stream(line);
 
-		for (uint32_t j = 0; j < kNumBlockHorizontal_; ++j) {
+		for (uint32_t x = 0; x < kNumBlockHorizontal_; ++x) {
 			std::string word;
 			getline(line_stream, word, ',');
 
-			if (mapChipTable.contains(word)) {
-				mapChipData_.data[i][j] = mapChipTable[word];
+			int kindDigit = 0;
+			int param = 0;
+			if (TryParseTileCode(word, kindDigit, param)) {
+				mapChipData_.data[y][x] = KindDigitToType(kindDigit);
+				mapChipData_.params[y][x] = param;
+			}
+		}
+	}
+
+	ladderPositions_.clear();
+	ladderPositions_.reserve(static_cast<size_t>(kNumBlockVertical_ * kNumBlockHorizontal_ / 8));
+
+	for (uint32_t y = 0; y < kNumBlockVertical_; ++y) {
+		for (uint32_t x = 0; x < kNumBlockHorizontal_; ++x) {
+			if (mapChipData_.data[y][x] == MapChipType::kLadder) {
+				ladderPositions_.push_back(GetMapChipPositionByIndex(x, y));
 			}
 		}
 	}
 }
 
 MapChipType MapChipField::GetMapChipTypeByIndex(uint32_t xIndex, uint32_t yIndex) {
-	if (xIndex < 0 || kNumBlockHorizontal_ - 1 < xIndex) {
+	if (kNumBlockHorizontal_ - 1 < xIndex) {
 		return MapChipType::kBlank;
 	}
-
-	if (yIndex < 0 || kNumBlockVertical_ - 1 < yIndex) {
+	if (kNumBlockVertical_ - 1 < yIndex) {
 		return MapChipType::kBlank;
 	}
-
 	return mapChipData_.data[yIndex][xIndex];
+}
+
+int MapChipField::GetMapChipParamByIndex(uint32_t xIndex, uint32_t yIndex) {
+	if (kNumBlockHorizontal_ - 1 < xIndex) {
+		return 0;
+	}
+	if (kNumBlockVertical_ - 1 < yIndex) {
+		return 0;
+	}
+	return mapChipData_.params[yIndex][xIndex];
 }
 
 Vector3 MapChipField::GetMapChipPositionByIndex(uint32_t xIndex, uint32_t yIndex) { return Vector3(kBlockWidth * xIndex, kBlockHeight * (kNumBlockVertical_ - 1 - yIndex), 0); }
@@ -76,24 +157,18 @@ Vector3 MapChipField::GetMapChipPositionByIndex(uint32_t xIndex, uint32_t yIndex
 IndexSet MapChipField::GetMapChipIndexSetByPosition(const Vector3& position) {
 	IndexSet indexSet = {};
 
-	// ブロック中心原点から左下(0,0)基準に変換（＝中心から半分ずらす）
 	float adjustedX = position.x + kBlockWidth / 2.0f;
 	float adjustedY = position.y + kBlockHeight / 2.0f;
 
-	// X番号計算（小数点以下切り捨て）
 	indexSet.xIndex = static_cast<uint32_t>(adjustedX / kBlockWidth);
 
-	// Y番号（いったんそのまま反転前で計算）
 	uint32_t reversedY = static_cast<uint32_t>(adjustedY / kBlockHeight);
-
-	// Y番号を上下反転
 	indexSet.yIndex = kNumBlockVertical_ - 1 - reversedY;
 
 	return indexSet;
 }
 
 Rect MapChipField::GetRectByIndex(uint32_t xIndex, uint32_t yIndex) {
-	// 指定ブロックの中心座標を取得する
 	Vector3 center = GetMapChipPositionByIndex(xIndex, yIndex);
 
 	Rect rect;
@@ -104,3 +179,25 @@ Rect MapChipField::GetRectByIndex(uint32_t xIndex, uint32_t yIndex) {
 
 	return rect;
 }
+
+void MapChipField::SetMapChipTypeByIndex(uint32_t xIndex, uint32_t yIndex, MapChipType type) {
+	if (kNumBlockHorizontal_ - 1 < xIndex) {
+		return;
+	}
+	if (kNumBlockVertical_ - 1 < yIndex) {
+		return;
+	}
+	mapChipData_.data[yIndex][xIndex] = type;
+}
+
+void MapChipField::SetMapChipParamByIndex(uint32_t xIndex, uint32_t yIndex, int param) {
+	if (kNumBlockHorizontal_ - 1 < xIndex) {
+		return;
+	}
+	if (kNumBlockVertical_ - 1 < yIndex) {
+		return;
+	}
+	mapChipData_.params[yIndex][xIndex] = param;
+}
+
+bool MapChipField::IsSolid(MapChipType t) const { return (t == MapChipType::kBlock) || (t == MapChipType::kDamage) || (t == MapChipType::kCrumbleFloor); }
